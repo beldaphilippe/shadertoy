@@ -1,170 +1,122 @@
-// Include standard headers
-#include <stdlib.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-// Modern OpenGL
-#include <GL/glew.h> // OpenGL function loading
-#include <GLFW/glfw3.h> // windows and output handling
-GLFWwindow* window; // window intialisation
-#include <glm/glm.hpp> // math utilities : vectors and matrices
+#include "utils/shader.h"
 
-
-char* LoadSource(const char *filename)
-{
-    char *src = NULL;   /* code source de notre shader */
-    FILE *fp = NULL;    /* fichier */
-    long size;          /* taille du fichier */
-    long i;             /* compteur */
-    /* on ouvre le fichier */
-    fp = fopen(filename, "r");
-    /* on verifie si l'ouverture a echoue */
-    if(fp == NULL)
-    {
-        fprintf(stderr, "impossible d'ouvrir le fichier '%s'\n", filename);
-        return NULL;
-    }
-    /* on recupere la longueur du fichier */
-    fseek(fp, 0, SEEK_END);
-    size = ftell(fp);
-    /* on se replace au debut du fichier */
-    rewind(fp);
-    /* on alloue de la memoire pour y placer notre code source */
-    src = malloc(size+1); /* +1 pour le caractere de fin de chaine '\0' */
-    if(src == NULL)
-    {
-        fclose(fp);
-        fprintf(stderr, "erreur d'allocation de memoire!\n");
-        return NULL;
-    }
-    /* lecture du fichier */
-    for(i=0; i<size; i++)
-        src[i] = fgetc(fp);
-    /* on place le dernier caractere a '\0' */
-    src[size] = '\0';
-    fclose(fp);
-    return src;
-}
+#define VERT_SHADER_PATH "shader0.vert"
+#define FRAG_SHADER_PATH "shader1.frag"
 
 int main() {
-    GLuint shader;
-
-    shader = glCreateShader(GL_FRAGMENT_SHADER);
-    if(shader == 0) {
-        fprintf(stderr, "shader creation error\n");
-        return;
+    if (!glfwInit()) {
+        printf("Failed to initialize GLFW\n");
+        return -1;
     }
 
-    char* src = LoadSource("shader0.frag");
-    if (src == NULL) return 0; // file loading failed
-    glShaderSource(shader, 1, &src, NULL);
-    glCompileShader(shader);
+    // Set OpenGL version to 3.3 Core Profile
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    GLFWwindow* window = glfwCreateWindow(800, 600, "shader exp", NULL, NULL);
+    if (!window) {
+        printf("Failed to create GLFW window\n");
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
 
-    glDeleteShader(shader);
-    shader = 0;
-}
-
-int main( void )
-{
-	// Initialize GLFW
-	if( !glfwInit() )
-	{
-		fprintf( stderr, "Failed to initialize GLFW\n" );
-		getchar();
-		return -1;
-	}
-
-	glfwWindowHint(GLFW_SAMPLES, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make macOS happy; should not be needed
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( 1024, 768, "Tutorial 02 - Red triangle", NULL, NULL);
-	if( window == NULL ){
-		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n" );
-		getchar();
-		glfwTerminate();
-		return -1;
-	}
-	glfwMakeContextCurrent(window);
-
-	// Initialize GLEW
-	glewExperimental = true; // Needed for core profile
-	if (glewInit() != GLEW_OK) {
-		fprintf(stderr, "Failed to initialize GLEW\n");
-		getchar();
-		glfwTerminate();
-		return -1;
-	}
+    // Initialize GLEW
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK) {
+        printf("Failed to initialize GLEW\n");
+        return -1;
+    }
 
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+    // Hide the mouse and enable unlimited mouvement
+    /*glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);*/
 
-	// Dark blue background
-	glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
+    // Vertex data
+    float vertices[] = {
+        -1.0f, -1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,
+        -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f, 0.0f
+    };
+    unsigned int indices[] = { 0, 1, 2, 1, 3, 2 };
 
-	GLuint VertexArrayID;
-	glGenVertexArrays(1, &VertexArrayID);
-	glBindVertexArray(VertexArrayID);
+    GLuint VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
 
 	// Create and compile our GLSL program from the shaders
-	GLuint programID = LoadShaders( "SimpleVertexShader.vertexshader", "SimpleFragmentShader.fragmentshader" );
+	GLuint programID = LoadShaders(VERT_SHADER_PATH, FRAG_SHADER_PATH);
 
+    // Declare parameters later given to shaders
+    GLuint u_resolutionID = glGetUniformLocation(programID, "iResolution");
+    GLuint u_mouseID = glGetUniformLocation(programID, "iMouse");
+    GLuint u_timeID = glGetUniformLocation(programID, "iTime");
+    /*GLuint u_posCameraID = glGetUniformLocation(programID, "iPosCamera");*/
+    /*GLuint u_dirCameraID = glGetUniformLocation(programID, "iDirCamera");*/
+    /*GLuint u_cameraThetaID = glGetUniformLocation(programID, "iCameraTheta");*/
+    /*GLuint u_cameraPhiID = glGetUniformLocation(programID, "iCameraPhi");*/
 
-	static const GLfloat g_vertex_buffer_data[] = { 
-		-1.0f, -1.0f, 0.0f,
-		 1.0f, -1.0f, 0.0f,
-		 0.0f,  1.0f, 0.0f,
-	};
+    // Window management
+    int windowWidth, windowHeight;
+    glfwGetWindowSize(window, &windowWidth, &windowHeight);
+    glfwSetCursorPos(window, windowWidth/2, windowHeight/2);
 
-	GLuint vertexbuffer;
-	glGenBuffers(1, &vertexbuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertex_buffer_data), g_vertex_buffer_data, GL_STATIC_DRAW);
+    // Mouse
+    double x_mouse, y_mouse;
 
-	do{
+    // Main Render Loop
+    do {
+        glClear(GL_COLOR_BUFFER_BIT);
+        glUseProgram(programID);
 
-		// Clear the screen
-		glClear( GL_COLOR_BUFFER_BIT );
+        // Dynamic window size
+        glfwGetWindowSize(window, &windowWidth, &windowHeight);
+        glViewport(0, 0, windowWidth, windowHeight);
 
-		// Use our shader
-		glUseProgram(programID);
+        // Shader parameters
+        glfwGetCursorPos(window, &x_mouse, &y_mouse);
+        glUniform2f(u_mouseID, x_mouse, y_mouse);
+        glUniform1f(u_timeID, (float)glfwGetTime());
+        glUniform2f(u_resolutionID,  (float)windowWidth, (float)windowHeight);
 
-		// 1rst attribute buffer : vertices
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-		glVertexAttribPointer(
-			0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
-			3,                  // size
-			GL_FLOAT,           // type
-			GL_FALSE,           // normalized?
-			0,                  // stride
-			(void*)0            // array buffer offset
-		);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-		// Draw the triangle !
-		glDrawArrays(GL_TRIANGLES, 0, 3); // 3 indices starting at 0 -> 1 triangle
-
-		glDisableVertexAttribArray(0);
-
-		// Swap buffers
-		glfwSwapBuffers(window);
-		glfwPollEvents();
-
-	} // Check if the ESC key was pressed or the window was closed
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
 	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS &&
 		   glfwWindowShouldClose(window) == 0 );
 
-	// Cleanup VBO
-	glDeleteBuffers(1, &vertexbuffer);
-	glDeleteVertexArrays(1, &VertexArrayID);
-	glDeleteProgram(programID);
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteProgram(programID);
 
-	// Close OpenGL window and terminate GLFW
-	glfwTerminate();
-
-	return 0;
+    glfwTerminate();
+    return 0;
 }
 
