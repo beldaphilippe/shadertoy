@@ -43,22 +43,46 @@ float dBox(vec3 p, vec3 center, vec3 s) {
     return length(max(abs(p-center)- s, 0.));
 }
 
-float getDist(vec3 p) {
-    float ds = sdSphere(p, vec3(0,1,-5), .5);
-    float dp = sdPlane(p, vec3(0, 0, 0), vec3(0, 1, 0));
-    float dc = sdCapsule(p, vec3(-1, 1, -5), vec3(-1, 2, -5), .5);
-    float dt = sdTorus(p, vec3(1.5, 1, -5), .7, .3);
-    float db = dBox(p, vec3(3, 1, -5), vec3(1));
 
-    return min(ds, min(dp, min(dc, min(dt, db))));
+const int n = 5; // number of elements in universe
+                     //
+vec4 getColor(int id) {
+    // Materials
+    // color, depth of reflection
+    vec4 mat[n] = vec4[] (vec4(1,0,0, 0),
+                           vec4(1,0,0, 0),
+                           vec4(1,0,0, 0),
+                           vec4(1,0,0, 0),
+                           vec4(1,0,0, 0));
+    return mat[id];
+}
+
+vec2 getDist(vec3 p) {
+    // Universe
+    float d_all[n] = float[] (sdSphere(p, vec3(0,1,-5), .5),
+                              sdPlane(p, vec3(0, 0, 0), vec3(0, 1, 0)),
+                              sdCapsule(p, vec3(-1, 1, -5), vec3(-1, 2, -5), .5),
+                              sdTorus(p, vec3(1.5, 1, -5), .7, .3),
+                              dBox(p, vec3(3, 1, -5), vec3(1)));
+
+        // get the minimal distance
+    float d = d_all[0];
+    int id = 0;
+    for (int i=1; i<n; i++) {
+        if (d > d_all[i]) {
+            d = d_all[i];
+            id = i;
+        }
+    }
+    return vec2(d, id);
 }
 
 vec3 getNormal(vec3 p) {
-    float d = getDist(p);
+    float d = getDist(p).x;
     vec2 e = vec2(.01, 0);
-    vec3 n = d - vec3(getDist(p-e.xyy),
-                      getDist(p-e.yxy),
-                      getDist(p-e.yyx));
+    vec3 n = d - vec3(getDist(p-e.xyy).x,
+                      getDist(p-e.yxy).x,
+                      getDist(p-e.yyx).x);
     return normalize(n);
 }
 
@@ -66,7 +90,7 @@ float RayMarching(vec3 ro, vec3 rd) {
     float dO = 0.;
     for (int i=0; i<MAX_STEPS; i++) {
         vec3 p = ro + rd*dO;
-        float dS = getDist(p);
+        float dS = getDist(p).x;
         dO += dS;
         if (dS<DIST_CONTACT || dO>MAX_DIST) break;
     }
