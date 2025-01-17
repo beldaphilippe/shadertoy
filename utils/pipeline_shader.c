@@ -97,7 +97,7 @@ int main() {
 
         // Shader parameters
         glfwGetCursorPos(window, &x_mouse, &y_mouse);
-        glUniform2f(u_mouseID, x_mouse, y_mouse);
+        glUniform2f(u_mouseID, x_mouse, -y_mouse);
         glUniform1f(u_timeID, (float)glfwGetTime());
         glUniform2f(u_resolutionID,  (float)windowWidth, (float)windowHeight);
 
