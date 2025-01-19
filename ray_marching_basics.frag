@@ -171,7 +171,7 @@ vec3 getCamera(vec2 uv, out vec3 pos_camera) {
 
     // Move camera with mouse
     vec2 m = iMouse.xy/iResolution.xy - 0.5;
-    dir_camera += vec3(6.*m.x, 1.+m.y, 0);
+    dir_camera = normalize(vec3(sin(4.*m.x), 6.*m.y, -cos(4.*m.x)));
     dir_camera = dir_camera/length(dir_camera);
 
     // Calculation of the ray from the camera corresponding to uv

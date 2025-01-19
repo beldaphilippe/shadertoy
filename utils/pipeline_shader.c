@@ -6,8 +6,8 @@
 
 #include "utils/shader.h"
 
-#define VERT_SHADER_PATH "shader0.vert"
-#define FRAG_SHADER_PATH "shader1.frag"
+#define VERT_SHADER_PATH "simple_shader.vert"
+#define FRAG_SHADER_PATH "ray_marching_basics.frag"
 
 int main() {
     if (!glfwInit()) {
@@ -16,6 +16,7 @@ int main() {
     }
 
     // Set OpenGL version to 3.3 Core Profile
+	glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -97,7 +98,8 @@ int main() {
 
         // Shader parameters
         glfwGetCursorPos(window, &x_mouse, &y_mouse);
-        glUniform2f(u_mouseID, x_mouse, -y_mouse);
+
+        glUniform2f(u_mouseID, x_mouse, windowHeight - y_mouse);
         glUniform1f(u_timeID, (float)glfwGetTime());
         glUniform2f(u_resolutionID,  (float)windowWidth, (float)windowHeight);
 
