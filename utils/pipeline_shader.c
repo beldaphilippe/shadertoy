@@ -7,7 +7,7 @@
 #include "utils/shader.h"
 
 #define VERT_SHADER_PATH "simple_shader.vert"
-#define FRAG_SHADER_PATH "ray_marching_basics.frag"
+#define FRAG_SHADER_PATH "mirror_corridor.frag"
 
 int main() {
     if (!glfwInit()) {

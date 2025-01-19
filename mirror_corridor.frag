@@ -23,7 +23,7 @@ float sdSphere(vec3 p, vec3 center, float radius) {
 }
 
 float sdPlane(vec3 p, vec3 center, vec3 normal) {
-    //return dot(p - center, normal)-0.1;
+    return dot(p - center, normal)-0.1;
     return clamp(abs(dot(p - center, normal))-0.1, 0., 1.);
 }
 
@@ -45,31 +45,29 @@ float dBox(vec3 p, vec3 center, vec3 s) {
     return length(max(abs(p-center)- s, 0.));
 }
 
+float dGonal(vec3 p, int n, vec3 center, float r) {
+    float d = MAX_DIST;
+    for (int i=0; i<n; i++) {
+        vec3 normal = - normalize(vec3(cos(float(i)*2.*PI/float(n)), sin(float(i)*2.*PI/float(n)), 0));
+        d = min(sdPlane(p, center - normal*r, normal), d);
+    }
+    return d;
+}
 
-const int n = 6; // number of elements in universe
+const int n = 1; // number of elements in universe
                      //
 vec4 getColor(int id) {
     // Materials
     // color, depth of reflection
-    vec4 mat[n] = vec4[] ( vec4(1,0,0, 1),
-                           vec4(0,1,0, 0),
-                           vec4(0,1,0, 1),
-                           vec4(1,1,0, 0),
-                           vec4(0,0,1, 0),
-                           vec4(1,0,1, 1));
+    vec4 mat[n] = vec4[] ( vec4(1,0,0, 0));
     return mat[id];
 }
 
 vec2 getDist(vec3 p) {
     // Universe
-    float d_all[n] = float[] (sdSphere(p, vec3(0,1,-5), .5),
-                              sdPlane(p, vec3(0, 0, 0), vec3(0, 1, 0)),
-                              sdPlane(p, vec3(-4, 0, 0), vec3(-1, 0, 0)),
-                              sdCapsule(p, vec3(-1, 1, -5), vec3(-1, 2, -5), .5),
-                              sdTorus(p, vec3(1.5, 1, -5), .7, .3),
-                              dBox(p, vec3(3, 1, -5), vec3(1)));
+    float d_all[n] = float[] (dGonal(p, 3, vec3(0), 10.));
 
-        // get the minimal distance
+    // get the minimal distance
     float d = d_all[0];
     int id = 0;
     for (int i=1; i<n; i++) {
@@ -107,8 +105,8 @@ vec2 RayMarching(vec3 ro, vec3 rd) {
 }
 
 float getLight(vec3 p) {
-    vec3 lo = vec3(0, 10, -5); // light origin
-    lo.xz += 2.*vec2(cos(iTime), sin(iTime));
+    vec3 lo = vec3(0, 2, -5); // light origin
+    //lo.xz += 2.*vec2(cos(iTime), sin(iTime));
 
     vec3 n = getNormal(p); // surface normal at point p
     vec3 l = normalize(lo-p); // light vector
@@ -116,6 +114,8 @@ float getLight(vec3 p) {
     float dif = clamp(dot(n, l), 0., 1.); // dot product can be negative
     float d = RayMarching(p + n*DIST_CONTACT*2., l).x;
     if (d < length(lo-p)) dif *= .1; // cast shadow
+
+    if (length(lo - p) < 1.) return 1.;
 
     return dif;
 }
@@ -154,6 +154,7 @@ vec3 Render(vec3 rd, vec3 ro) {
         p = p + rd*dS.x; // hit point
         dif = getLight(p);
     }
+    //return getNormal(p); // for surface debugging
     return col*dif;
 }
 
