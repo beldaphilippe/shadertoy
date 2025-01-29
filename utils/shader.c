@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <GL/glew.h>
+#include "external/glew-1.13.0/include/GL/glew.h" // import glew
+
 
 // Function to read shader code from a file
 char* readFile(const char* file_path) {
