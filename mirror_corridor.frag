@@ -54,6 +54,31 @@ float dGonal(vec3 p, int n, vec3 center, float r) {
     return d;
 }
 
+// The path is a 2D sinusoid that varies over time, depending upon the frequencies, and amplitudes.
+vec2 path(in float z){ float s = sin(z/24.)*cos(z/12.); return vec2(s*12., 0.); }
+
+vec3 tri(in vec3 x){return abs(x-floor(x)-.5);} // Triangle function.
+
+// The function used to perturb the walls of the cavern: There are infinite possibities, but this one is
+// just a cheap...ish routine - based on the triangle function - to give a subtle jaggedness. Not very fancy,
+// but it does a surprizingly good job at laying the foundations for a sharpish rock face. Obviously, more
+// layers would be more convincing. However, this is a GPU-draining distance function, so the finer details
+// are bump mapped.
+float surfFunc(in vec3 p){
+	return dot(tri(p*0.5 + tri(p*0.25).yzx), vec3(0.666));
+}
+
+#define FH 1.0 // Floor height. Set it to 2.0 to get rid of the floor.
+
+float map(vec3 p){
+    float sf = surfFunc(p - vec3(0, cos(p.z/3.)*.15, 0));
+    // Square tunnel.
+    // For a square tunnel, use the Chebyshev(?) distance: max(abs(tun.x), abs(tun.y))
+    vec2 tun = abs(p.xy - path(p.z))*vec2(0.5, 0.7071);
+    float n = 1. - max(tun.x, tun.y) + (0.5 - sf);
+    return min(n, p.y + FH);
+}
+
 const int n = 1; // number of elements in universe
                      //
 vec4 getColor(int id) {
@@ -65,7 +90,8 @@ vec4 getColor(int id) {
 
 vec2 getDist(vec3 p) {
     // Universe
-    float d_all[n] = float[] (dGonal(p, 3, vec3(0), 10.));
+    //float d_all[n] = float[] (dGonal(p, 3, vec3(0), 10.));
+    float d_all[n] = float[] (map(p));
 
     // get the minimal distance
     float d = d_all[0];
@@ -141,6 +167,7 @@ vec3 Render(vec3 rd, vec3 ro) {
         vec3 n = getNormal(p);
         rd = rd - 2.*dot(rd, n)*n; // reflected ray
         dS = RayMarching(p + 2.*DIST_CONTACT*n, rd); // dist to a surface, id of item hit
+        //dS.x = min(dS.x, sdSphere(p, ro, .5));
         if (int(dS.y) == -1) { // out of rendered distance, sky
             col =  vec3(53, 81, 92)/100. - normalize(rd).y/4.;
             break;
@@ -154,8 +181,9 @@ vec3 Render(vec3 rd, vec3 ro) {
         p = p + rd*dS.x; // hit point
         dif = getLight(p);
     }
-    //return getNormal(p); // for surface debugging
-    return col*dif;
+    return getNormal(p); // for surface debugging
+    //return col*dif;
+
 }
 
 vec3 getCamera(vec2 uv, out vec3 pos_camera) {

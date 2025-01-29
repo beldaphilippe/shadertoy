@@ -140,7 +140,7 @@ vec3 Render(vec3 rd, vec3 ro) {
         // calculus of reflected ray
         vec3 n = getNormal(p);
         rd = rd - 2.*dot(rd, n)*n; // reflected ray
-        dS = RayMarching(p + 2.*DIST_CONTACT*n, rd); // dist to a surface, id of item hit
+        dS = min(sdSphere(p, ro, .5), RayMarching(p + 2.*DIST_CONTACT*n, rd)); // dist to a surface, id of item hit
         if (int(dS.y) == -1) { // out of rendered distance, sky
             col =  vec3(53, 81, 92)/100. - normalize(rd).y/4.;
             break;

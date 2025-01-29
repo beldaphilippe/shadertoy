@@ -1,6 +1,12 @@
 #!/bin/sh
 
-if [ $1 = "-s" ]; then
+if [ $# -eq 0 ]
+  then
+    echo "Usage :
+    opengl -> shadertoy : gl2shadertoy -o <file>
+    shadertoy -> opengl : gl2shadertoy -s <file>"
+
+else if [ $1 = "-s" ]; then
     echo "#version 330 core
 
 uniform vec2 iResolution;
@@ -16,6 +22,7 @@ else
     echo "Usage :
     opengl -> shadertoy : gl2shadertoy -o <file>
     shadertoy -> opengl : gl2shadertoy -s <file>"
+fi
 fi
 fi
 
