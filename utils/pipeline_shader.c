@@ -8,7 +8,7 @@
 #include "shader.h"
 
 #define VERT_SHADER_PATH "simple_shader.vert"
-#define FRAG_SHADER_PATH "gif_squares_circles.frag"
+#define FRAG_SHADER_PATH "gif_circles_intersecting.frag"
 
 int main() {
     if (!glfwInit()) {
