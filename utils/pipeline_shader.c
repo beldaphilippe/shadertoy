@@ -88,8 +88,24 @@ int main() {
     // Mouse
     double x_mouse, y_mouse;
 
+    // For speed computation
+	double lastTime = glfwGetTime();
+	int nbFrames = 0;
+
     // Main Render Loop
     do {
+
+		// Measure speed
+		double currentTime = glfwGetTime();
+		nbFrames++;
+		if ( currentTime - lastTime >= 1.0 ){ // If last prinf() was more than 1sec ago
+			// printf and reset
+			fprintf(stdout, "\r%f ms/frame", 1000.0/(double)nbFrames);
+            fflush(stdout);
+			nbFrames = 0;
+			lastTime += 1.0;
+		}
+
         glClear(GL_COLOR_BUFFER_BIT);
         glUseProgram(programID);
 
@@ -122,4 +138,3 @@ int main() {
     glfwTerminate();
     return 0;
 }
-

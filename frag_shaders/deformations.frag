@@ -8,9 +8,10 @@ uniform vec2 iMouse;
 
 #define PI              3.14159265358979323846
 #define MAX_STEPS       100
-#define FAR             100.
+#define FAR             80.
 #define DIST_CONTACT    .01
 #define rot(a)          mat2( cos(a), -sin(a), sin(a), cos(a) )
+#define rotpi2          mat2(0, -1, 1, 0)
 
 // CODE
 
@@ -18,17 +19,20 @@ float mabs(float x) {
     return (x>0) ? x : -x;
 }
 
+float mmod(float a, float b) {
+    return a - (b * floor(a/b));
+}
+
 float sdBox(vec3 p) {
-    //vec3 b = vec3(0, 1., -1.);
-    vec3 c = vec3(0, 3, -2);
-    p = p-c;
+    vec3 center = vec3(1);
+    p = p - center;
     vec3 b = vec3(.5); // dimensions of the box
     vec3 q = abs(p) - b;
     return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
 }
 
 float msdBox(vec3 p) {
-    vec3 c = vec3(0, 1, -6);
+    vec3 c = vec3(10, 10, 10);
     float a = 1.;
     p.xy = mod(p.xy, 2.) - vec2(1,0);
     //p = mod(p, 2.) - vec3(1,0,1);
@@ -41,20 +45,33 @@ float msdBox(vec3 p) {
 
 float sdSphere(vec3 p) {
     float a = .5;
-    vec3 c = vec3(0, 1, -1);
-    return length(p-c) - a/2.;
+    vec3 center = vec3(.5);
+    return length(p - center) - a/2.;
 }
 
 vec3 repOP(vec3 p, float c) {
-    p = mod(p, c) - vec3(c*.5, 0, 0);
-    p.z = - p.z;
+    // this operator replicates in spaces periodically
+    // everything that is in the [0,c] x [0,c] x [0,c] box
+
+    p.xz = mod(p.xz, c);
+    //p.y = mmod(p.y, c);
+    //p.y = fract(p.y);
+    //p.z = p.z;
+    //p = fract(p*c);
+    return p;
+}
+
+vec3 turnOP(vec3 p) {
+    vec3 center = vec3(1);
+    p.xz = (p.xz-center.xz)*rot(3.*p.y) + center.xz;
     return p;
 }
 
 float getDist(vec3 p) {
-    //return sdSphere(repOP(p, 3.));
-    //return sdBox(repOP(p, 3.));
-    return sdBox(p);
+    return sdBox(turnOP(p));
+    //return sdSphere(repOP(p, 2.));
+    //return sdBox(repOP(p, 4.));
+    //return sdBox(p);
 }
 
 vec3 getNormal(vec3 p) {
@@ -99,7 +116,7 @@ vec3 getCamera(vec2 uv, out vec3 pos_camera) {
     // Takes uv as a vector of the position on the screen
     // of the pixel rendered, between 0 and 1
 
-    pos_camera = vec3(0, 3, 2);
+    pos_camera = vec3(0, 1, 3);
     vec3 dir_camera = vec3(0, 0, -1);
     float dist_viewport = 2.;
     float width_viewport = 2.;
@@ -108,11 +125,11 @@ vec3 getCamera(vec2 uv, out vec3 pos_camera) {
     // Move camera with mouse
     vec2 m = iMouse.xy/iResolution.xy - 0.5;
     dir_camera = normalize(vec3(sin(4.*m.x), 6.*m.y, -cos(4.*m.x)));
-    dir_camera = dir_camera/length(dir_camera);
 
     // Calculation of the ray from the camera corresponding to uv
     vec3 du = vec3(0);
-    du.xz = vec2(dir_camera.x, dir_camera.z) * rot(PI/2.);
+    du.xz = vec2(dir_camera.x, dir_camera.z) * rotpi2;
+    //du.xz = vec2(dir_camera.x, dir_camera.z) * rot(PI/2.);
     vec3 dv = cross(du, dir_camera);
 
     du = normalize(du) * width_viewport;
@@ -124,19 +141,16 @@ vec3 getCamera(vec2 uv, out vec3 pos_camera) {
 
 vec3 render(vec3 ro, vec3 rd) {
 
-    float dS = rayMarching(ro, rd); // dist to a surface, id of item hit
     vec3 sky = vec3(53, 81, 92)/100. - normalize(rd).y/4.;
-
-    //if (dS > FAR)                   // out of rendered distance, sky
-        //return sky;
-
-    // an object has been hit
-    vec3 p = ro + rd*dS; // hit point
     vec3 planeCol = vec3(0, 1, 0);
+
+    float dS = rayMarching(ro, rd); // dist to a surface, id of item hit
+    vec3 p = ro + rd*dS;            // hit point
     float diff = getLight(p);
 
     return mix(getNormal(p), sky, smoothstep(FAR*.5, FAR, dS));
-    //return mix(planeCol * diff, sky, smoothstep(FAR*.5, FAR, dS));
+    //return mix(planeCol, sky, smoothstep(FAR*.5, FAR, dS));
+    //return mix(planeCol * diff, sky, smoothstep(FAR*.9, FAR, dS));
 }
 
 void main(void)
