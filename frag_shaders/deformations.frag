@@ -19,6 +19,15 @@ float mabs(float x) {
 }
 
 float sdBox(vec3 p) {
+    //vec3 b = vec3(0, 1., -1.);
+    vec3 c = vec3(0, 3, -2);
+    p = p-c;
+    vec3 b = vec3(.5); // dimensions of the box
+    vec3 q = abs(p) - b;
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
+float msdBox(vec3 p) {
     vec3 c = vec3(0, 1, -6);
     float a = 1.;
     p.xy = mod(p.xy, 2.) - vec2(1,0);
@@ -33,20 +42,19 @@ float sdBox(vec3 p) {
 float sdSphere(vec3 p) {
     float a = .5;
     vec3 c = vec3(0, 1, -1);
-
-    //p = mod(p, rep) - vec3(rep/2.,0,0);
-    //p.z = - p.z;
     return length(p-c) - a/2.;
 }
 
 vec3 repOP(vec3 p, float c) {
-    p = mod(p, c) - vec3(c/2., 0, 0);
+    p = mod(p, c) - vec3(c*.5, 0, 0);
     p.z = - p.z;
     return p;
 }
 
 float getDist(vec3 p) {
-    return sdSphere(repOP(p, 3.));
+    //return sdSphere(repOP(p, 3.));
+    //return sdBox(repOP(p, 3.));
+    return sdBox(p);
 }
 
 vec3 getNormal(vec3 p) {
@@ -91,7 +99,7 @@ vec3 getCamera(vec2 uv, out vec3 pos_camera) {
     // Takes uv as a vector of the position on the screen
     // of the pixel rendered, between 0 and 1
 
-    pos_camera = vec3(0, 3, 0);
+    pos_camera = vec3(0, 3, 2);
     vec3 dir_camera = vec3(0, 0, -1);
     float dist_viewport = 2.;
     float width_viewport = 2.;
@@ -127,8 +135,8 @@ vec3 render(vec3 ro, vec3 rd) {
     vec3 planeCol = vec3(0, 1, 0);
     float diff = getLight(p);
 
-    //return mix(getNormal(p) * diff, sky, smoothstep(FAR*.5, FAR, dS));
-    return mix(planeCol * diff, sky, smoothstep(FAR*.5, FAR, dS));
+    return mix(getNormal(p), sky, smoothstep(FAR*.5, FAR, dS));
+    //return mix(planeCol * diff, sky, smoothstep(FAR*.5, FAR, dS));
 }
 
 void main(void)
