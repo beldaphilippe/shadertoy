@@ -24,8 +24,6 @@ float mmod(float a, float b) {
 }
 
 float sdBox(vec3 p) {
-    vec3 center = vec3(1);
-    p = p - center;
     vec3 b = vec3(.5); // dimensions of the box
     vec3 q = abs(p) - b;
     return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
@@ -44,17 +42,18 @@ float msdBox(vec3 p) {
 }
 
 float sdSphere(vec3 p) {
-    float a = .5;
-    vec3 center = vec3(.5);
-    return length(p - center) - a/2.;
+    float r = .5; // radius
+    return length(p) - r/2.;
 }
 
-vec3 repOP(vec3 p, float c) {
+vec3 repOP(vec3 p, vec3 c) {
     // this operator replicates in spaces periodically
     // everything that is in the [0,c] x [0,c] x [0,c] box
 
-    p.xz = mod(p.xz, c);
-    //p.y = mmod(p.y, c);
+    //p.xz = mod(p.xz, c);
+    //p = p + c*.5;
+    p = p + 1.;
+    p.x = mod(p.x, c.x);
     //p.y = fract(p.y);
     //p.z = p.z;
     //p = fract(p*c);
@@ -68,8 +67,9 @@ vec3 turnOP(vec3 p) {
 }
 
 float getDist(vec3 p) {
-    return sdBox(turnOP(p));
-    //return sdSphere(repOP(p, 2.));
+    //return sdBox(turnOP(p));
+    vec3 period = vec3(2);
+    return sdSphere(repOP(p, period));
     //return sdBox(repOP(p, 4.));
     //return sdBox(p);
 }
@@ -116,7 +116,7 @@ vec3 getCamera(vec2 uv, out vec3 pos_camera) {
     // Takes uv as a vector of the position on the screen
     // of the pixel rendered, between 0 and 1
 
-    pos_camera = vec3(0, 1, 3);
+    pos_camera = vec3(-10, 1, 3);
     vec3 dir_camera = vec3(0, 0, -1);
     float dist_viewport = 2.;
     float width_viewport = 2.;
