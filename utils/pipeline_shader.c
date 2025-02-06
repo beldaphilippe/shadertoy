@@ -9,6 +9,7 @@
 
 #define VERT_SHADER_PATH "simple_shader.vert"
 #define FRAG_SHADER_PATH "frag_shaders/deformations.frag"
+/*#define FRAG_SHADER_PATH "aa.frag"*/
 
 int main() {
     if (!glfwInit()) {
