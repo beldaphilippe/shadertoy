@@ -1,5 +1,8 @@
-#include "external/glew-1.13.0/include/GL/glew.h"
-#include "external/glfw-3.1.2/include/GLFW/glfw3.h"
+/*#include "external/glew-1.13.0/include/GL/glew.h"*/
+/*#include "external/glfw-3.1.2/include/GLFW/glfw3.h"*/
+
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include <stdio.h>
 #include <stdlib.h>
