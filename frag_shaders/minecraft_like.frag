@@ -87,7 +87,7 @@ vec3 rotOP(vec3 p, vec3 c) {
 
 int is_cube(vec3 p) {
     vec3 id = mod(p, 1.);
-    if (nois
+    if (gold_noise(id, seed+.1) > .5)za
 }
 
 float getDist(vec3 p)

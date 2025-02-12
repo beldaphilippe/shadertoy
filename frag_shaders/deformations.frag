@@ -126,7 +126,7 @@ float rayMarching(vec3 ro, vec3 rd) {
     for (int i=0; i<MAX_STEPS; i++) {
         vec3 p = ro + rd*dO;
         float dS = getDist(p);
-        dO += dS*.65; // very important to avoid artifacts (factor can be changed a bit)
+        dO += dS*.6; // very important to avoid artifacts (factor can be changed a bit)
         if (dS<DIST_CONTACT || dO>FAR) break;
     }
     return dO;
@@ -204,7 +204,7 @@ vec3 render(vec3 ro, vec3 rd) {
 
     //return mix(getNormal(p)*.5+.5, sky, smoothstep(FAR*.5, FAR, dS));
     //return mix(planeCol, sky, smoothstep(FAR*.5, FAR, dS));
-    return mix(planeCol * diff, sky, smoothstep(FAR*.5, FAR, dS));
+    return mix(planeCol * diff, sky, smoothstep(FAR*.4, FAR, dS));
 }
 
 void main(void)
