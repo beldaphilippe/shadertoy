@@ -25,6 +25,10 @@ float gold_noise(in vec2 xy, in float seed){
        return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
 }
 
+float gold_noise(in vec3 xyz, in float seed){
+       return fract(tan(distance(xyz*PHI, xyz)*seed)*xyz.x);
+}
+
 vec3 randCol(vec2 id) {
     float seed = 33.;
     return vec3(gold_noise(id, seed+0.1),  // r
@@ -79,6 +83,11 @@ vec3 twistOP(vec3 p, vec3 c) {
 vec3 rotOP(vec3 p, vec3 c) {
     p.xz = (p.xz-c.xz)*rot(.7*iTime) + c.xz;
     return p;
+}
+
+int is_cube(vec3 p) {
+    vec3 id = mod(p, 1.);
+    if (nois
 }
 
 float getDist(vec3 p)

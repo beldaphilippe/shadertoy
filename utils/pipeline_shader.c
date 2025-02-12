@@ -1,17 +1,18 @@
-/*#include "external/glew-1.13.0/include/GL/glew.h"*/
-/*#include "external/glfw-3.1.2/include/GLFW/glfw3.h"*/
+#include "external/glew-2.1.0/include/GL/glew.h"
+#include "external/glfw-3.4/include/GLFW/glfw3.h"
 
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
+/*#include <GL/glew.h>*/
+/*#include <GLFW/glfw3.h>*/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "shader.h"
+#include "../build/shader_path.h"
 
 #define VERT_SHADER_PATH "simple_shader.vert"
-#define FRAG_SHADER_PATH "frag_shaders/deformations.frag"
+/*#define FRAG_SHADER_PATH "frag_shaders/deformations.frag"*/
 /*#define FRAG_SHADER_PATH "aa.frag"*/
 
 int main() {
