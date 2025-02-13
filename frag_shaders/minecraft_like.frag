@@ -21,6 +21,10 @@ float N21(vec2 p) {
     return fract(sin(p.x*24. + p.y*605.)*4879.);
 }
 
+float gold_noise(in float x, in float seed){
+       return fract(tan(distance(x*PHI, x)*seed)*x);
+}
+
 float gold_noise(in vec2 xy, in float seed){
        return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
 }
@@ -85,19 +89,26 @@ vec3 rotOP(vec3 p, vec3 c) {
     return p;
 }
 
-int is_cube(vec3 p) {
-    vec3 id = mod(p, 1.);
-    if (gold_noise(id, seed+.1) > .5)za
+bool is_cube(vec3 p) {
+    vec3 id = floor(p/1.);
+    float seed = 33.;
+    if (gold_noise(id.xz, seed) < .5) return true;
+    //if (gold_noise(id.xz, seed) < .5 && gold_noise(id.y, seed+.4)*smoothstep(3., 0., id.y)<.0001) return true;
+    //if (gold_noise(id.x, seed+.1) < .5 && gold_noise(id.y, seed+.2)<.4) return true;
+    //if (id.x < 0. && id.y < 0.) return true;
+    return false;
 }
 
 float getDist(vec3 p)
 {
-    vec2 id = p.xz - mod(p.xz, 5);
+    //vec2 id = p.xz - mod(p.xz, 5);
+    vec2 id = floor(p.xz/1.);
     float r = N21(id);
 
+    return (is_cube(p)) ? sdBox(repOP(p, vec3(1, 0, 1)), vec3(.5)) : .5;
     //return min(sdPlane(p), sdCylinder(repOP(p, vec3(5, 0, 5)), r));
     //return min(sdPlane(p), sdBox(repOP(p, vec3(5, 0, 5)), vec3(r, 4, r)));
-    return min(sdPlane(p), sdBox(rotOP(twistOP(repOP(p, vec3(5, 0, 5)), vec3(0)), vec3(0)), vec3(r, 4, r)));
+    //return min(sdPlane(p), sdBox(rotOP(twistOP(repOP(p, vec3(5, 0, 5)), vec3(0)), vec3(0)), vec3(r, 4, r)));
 
     //return sdCylinder(twistOP(rotOP(repOP(p, vec3(5)), vec3(0)), vec3(0.1)), r);
     //return sdCylinder(rotOP(twistOP(repOP(p, vec3(5)), vec3(0.1)), vec3(0)), r);
@@ -116,18 +127,6 @@ vec3 getNormal(vec3 p) {
                       getDist(p-e.yxy),
                       getDist(p-e.yyx));
     return normalize(n);
-}
-
-float rayMarching2(vec3 ro, vec3 rd) {
-    float dO = 0.; // dist of item hit
-    for (int i=0; i<MAX_STEPS; i++) {
-        vec3 p = ro + rd*dO;
-        float dS = getDist(p);
-        dO += dS;
-        if (dS<DIST_CONTACT) break;
-        if (dO>FAR) break;
-    }
-    return dO;
 }
 
 float rayMarching(vec3 ro, vec3 rd) {

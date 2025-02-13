@@ -21,9 +21,9 @@ const float TWO_PI= PI*2.0;
 mat3 rotate(vec3 axis, float angle)
 {
     axis = normalize(axis); float s = sin(angle), c = cos(angle), oc = 1.0 - c;
-    return mat3(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  
-                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  
-                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c          
+    return mat3(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,
+                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,
+                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c
                );
 }
 vec3 rotateX(vec3 p, float a) { float c = cos(a), s = sin(a); return vec3(p.x, c*p.y - s*p.z, s*p.y + c*p.z); }
@@ -68,61 +68,61 @@ float checkers( in vec3 p ) { vec2 s = sign(fract(p.xz*.5)-.5); return .5 - .5*s
 
 
 
-vec2 map(in vec3 p) 
-{    
+vec2 map(in vec3 p)
+{
     float d2Plane=sdPlane(p,vec4(0.0,1.0,0.0,0.0));
 
-    vec2  grid_id = floor((p.xz+1.0)/2.0);    
+    vec2  grid_id = floor((p.xz+1.0)/2.0);
     float fSeed = hash2(grid_id);
     float fSeed2 = hash2(grid_id+248.0);
-    
-    p.xz = mod( p.xz+1.0, 2.0 ) - 1.0;        
-    
+
+    p.xz = mod( p.xz+1.0, 2.0 ) - 1.0;
+
     float a =fSeed*TWO_PI+iTime*(1.0+fSeed2*3.0)*sign(fSeed-0.5);
     vec2 sc = cossin(a);
-   	
-    // deformation 
+
+    // deformation
     p.xz +=cossin(p.y*sign(fSeed)+iTime*(5.0+fSeed2)+fSeed*TWO_PI).yx*0.2;
-    
+
     // jump anim
     p.y-=0.7+sin(iTime*(1.0+fSeed2*5.0)+fSeed)*0.5;
-    
+
     // Body
     float h = 1.0+fSeed2;
-    float r = sin(p.y*PI+fSeed*TWO_PI+iTime*10.0)*(0.05+fSeed2*0.05-0.025)+0.25;    
+    float r = sin(p.y*PI+fSeed*TWO_PI+iTime*10.0)*(0.05+fSeed2*0.05-0.025)+0.25;
     float d2Body =  sdVerticalCapsule(p, h, r);
-    
+
     // Arms
     float r2 = r*2.5;
     float armH = h*0.6+fSeed2*0.3;
     float armL = h*0.4+fSeed*0.2 + abs(sin(iTime*(1.0+fSeed*1.0)+fSeed2));
     d2Body=opSmoothUnion(d2Body, sdCapsule(p, vec3(sc.x*r,armH,sc.y*r), vec3(sc.x*r2,armL,sc.y*r2) ,0.1), 0.2);
     d2Body=opSmoothUnion(d2Body, sdCapsule(p, vec3(-sc.x*r,armH,-sc.y*r), vec3(-sc.x*r2,armL,-sc.y*r2) ,0.1), 0.2);
-    
+
     // Mouth
     float mouthR = max(0.0,sin(iTime*(0.7+fSeed2)+fSeed)*sin(iTime*(2.0+fSeed)+fSeed2)*0.15+0.1);
     float d2Mouth = sdSphere(p+vec3(-sc.y*r,-h*(0.7+fSeed2*0.2),sc.x*r),mouthR);
-    
+
     // Eyes
     vec2 eye1 = cossin(a+Q_PI);
     vec2 eye2 = cossin(a+Q_PI+H_PI);
-    float eyeS = 0.12;     
+    float eyeS = 0.12;
     float d2Eyeball = min(sdSphere(p+vec3(eye1.x*r,-h,eye1.y*r),eyeS),sdSphere(p+vec3(eye2.x*r,-h,eye2.y*r),eyeS) );
     float pupilS = 0.07;
     float r3=r+eyeS;
     float d2Pupil = min(sdSphere(p+vec3(eye1.x*r3,-h,eye1.y*r3),pupilS),sdSphere(p+vec3(eye2.x*r3,-h,eye2.y*r3),pupilS) );
     float d2Eye = max(d2Eyeball, -d2Pupil);
-    
+
     if (d2Plane<d2Body)
    		return vec2(-1.0, d2Plane);
-    else if (d2Eye<d2Body)       
+    else if (d2Eye<d2Body)
         if (d2Pupil  < d2Eyeball )
             return vec2(-4.0, d2Pupil);
-		else            
+		else
         	return vec2(-3.0, d2Eyeball);
     else
     {
-     	if(d2Body > -d2Mouth)   
+     	if(d2Body > -d2Mouth)
         	return vec2(fSeed,d2Body);
         else
             return vec2(-2.0,-d2Mouth);
@@ -151,7 +151,7 @@ float AO( in vec3 pos, in vec3 nor )
         occ += -(dd-hr)*sca;
         sca *= 0.95;
     }
-    return clamp( 1.0 - 3.0*occ, 0.0, 1.0 );    
+    return clamp( 1.0 - 3.0*occ, 0.0, 1.0 );
 }
 
 float softShadows( in vec3 ro, in vec3 rd, in float mint, in float tmax )
@@ -184,8 +184,8 @@ vec3 intersect( in vec3 ro, in vec3 rd, in float px, const float maxdist )
 
 vec3 render(in vec3 ro, in vec3 rd)
 {
-    vec3 r = intersect(ro, rd, 0.3/iResolution.y, 100.0);                	
-    
+    vec3 r = intersect(ro, rd, 0.3/iResolution.y, 100.0);
+
     // light
     vec3 p = ro+(rd*r.x);
     vec3 nor = normal(p,0.0001);
@@ -194,30 +194,30 @@ vec3 render(in vec3 ro, in vec3 rd)
     float occlusion = AO(p,nor);
     vec3 ref = reflect( rd, nor );
     float specular = (r.y >=0.0 || r.y==-4.0) ? pow(clamp( dot( ref, light ), 0.0, 1.0 ),20.0) : 0.0;
-    float shadow = softShadows(p,light,0.01,10.0);   
-    
-    vec3 color = r.y<0.0 ? 
+    float shadow = softShadows(p,light,0.01,10.0);
+
+    vec3 color = r.y<0.0 ?
         (r.y<-3.0 ? vec3(0.1) :
         (r.y<-2.0 ? vec3(1.0) :
         (r.y<-1.0 ? vec3(0.1) :
-        checkers(p)*vec3(0.2)+0.2 ))) : 
+        checkers(p)*vec3(0.2)+0.2 ))) :
         palette(r.y*100.,vec3(0.5),vec3(0.5),vec3(0.5),vec3(0.0,0.33,0.67));
-    
-    return vec3(1.0)*diffuse*specular + vec3(diffuse*0.5*shadow+0.5)*color;    
+
+    return vec3(1.0)*diffuse*specular + vec3(diffuse*0.5*shadow+0.5)*color;
 }
 
 void main(void)
 {
 	vec2 uv = (gl_FragCoord.xy.xy / iResolution.xx) -vec2( 0.5,0.5*iResolution.y/iResolution.x);
-    
+
     float time = iTime*0.3;
-  
+
     float cam_h = sin(time*0.5+1.0)*5.0+10.0;
-    float cam_r = sin(time*1.7+2.0)*sin(time)*5.0+cam_h;    
-    vec3 ro = vec3(sin(time)*cam_r,cam_h,-cos(time)*cam_r);      
+    float cam_r = sin(time*1.7+2.0)*sin(time)*5.0+cam_h;
+    vec3 ro = vec3(sin(time)*cam_r,cam_h,-cos(time)*cam_r);
     vec3 rd = normalize(vec3(uv, 1.0)); // fov
     rd=rotateX(rd,PI/5.0);
-    
-    
+
+
     gl_FragColor=vec4(render(ro,rd) ,1.0);
 }

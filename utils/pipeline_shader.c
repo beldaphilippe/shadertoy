@@ -105,7 +105,7 @@ int main() {
 		nbFrames++;
 		if ( currentTime - lastTime >= 1.0 ){ // If last prinf() was more than 1sec ago
 			// printf and reset
-			fprintf(stdout, "\r%f ms/frame", 1000.0/(double)nbFrames);
+			fprintf(stdout, "\r%f ms/frame, %d fps", 1000.0/(double)nbFrames, nbFrames);
             fflush(stdout);
 			nbFrames = 0;
 			lastTime += 1.0;
