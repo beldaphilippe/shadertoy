@@ -31,13 +31,11 @@ float hash12(vec2 p) {
     return fract((p3.x + p3.y) * p3.z);
 }
 
-float hash(vec2 uv)
-{
+float hash(vec2 uv) {
     return fract(sin(dot(uv, vec2(73211.171, 841.13))) * 32131.18128);
 }
 
-float noise(vec2 uv)
-{
+float noise(vec2 uv) {
     vec2 ipos = floor(uv);
     vec2 fpos = fract(uv);
 
@@ -51,16 +49,23 @@ float noise(vec2 uv)
     return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
 }
 
-float map(vec2 xz) {
+float map(vec2 xz)
+{
     float acc = 0.;
     float amp = 2.;
     float freq = 1.;
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<9; i++) {
         acc += amp * noise(xz);
         xz = xz * rot(0.3); // rotation to avoid domain alignment
-        freq *= 2.;         // harmonics
+        freq *= 4.;         // harmonics
         amp *= .5;          // amplitude vary
     }
+    return acc;
+}
+
+float map2(vec2 xz) {
+    float acc = 0.;
+    acc += 1. * noise(xz * rot(.4));
     return acc;
 }
 
@@ -69,26 +74,6 @@ vec3 randCol(vec2 id) {
     return vec3(gold_noise(id, seed+0.1),  // r
                 gold_noise(id, seed+0.2),  // g
                 gold_noise(id, seed+0.3)); // b
-}
-
-float sdPlane(vec3 p) {
-    return p.y;
-}
-
-float sdBox(vec3 p, vec3 b) {
-    // b contains the dimensions of the box
-    float radii = min(min(b.x, b.y), b.z)*.04; // rounds the box
-    vec3 q = abs(p) - b + radii;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - radii;
-}
-
-float sdSphere(vec3 p, float r) {
-    return length(p) - r;
-}
-
-float sdCylinder(vec3 p, float r) {
-    float height = 4.;
-    return (p.y > height) ? length(p.xz) - r : length(p-vec3(0,height,0));
 }
 
 vec3 transOP(vec3 p, vec3 d) {
@@ -143,7 +128,7 @@ float rayMarching(vec3 ro, vec3 rd) {
     for (int i=0; i<MAX_STEPS; i++) {
         vec3 p = ro + rd*dO;
         float dS = getDist(p);
-        dO += dS*.6; // very important to avoid artifacts (factor can be changed a bit)
+        dO += dS*.3; // very important to avoid artifacts (factor can be changed a bit)
         if (dS<DIST_CONTACT || dO>FAR) break;
     }
     return dO;
@@ -176,9 +161,9 @@ float getLight(vec3 p) {
     if (rayMarching(p+2.*DIST_CONTACT*n, ld) < FAR) return .1;
 
     float diffuse = dot(n, ld); // diffuse component
-    diffuse = mix(clamp(diffuse, 0., 1.), .5*diffuse+.5, .2) + 4.*smoothstep(.98, 1., diffuse); // diffuse and phong reflection
+    diffuse = mix(clamp(diffuse, 0., 1.), .5*diffuse+.5, .2); //+ 4.*smoothstep(.98, 1., diffuse); // diffuse and phong reflection
     float ambiant = .1;
-    return max(1.2*diffuse, ambiant);
+    return max(.7*diffuse, ambiant);
 }
 
 vec3 getCamera(vec2 uv, out vec3 pos_camera) {
@@ -217,9 +202,10 @@ vec3 render(vec3 ro, vec3 rd) {
     vec3 p = ro + rd*dS;            // hit point
     float diff = getLight(p);
 
-    //vec3 planeCol = randCol(p.xz - mod(p.xz, 1)+3.);
     vec2 id = p.xz - mod(p.xz, 1);
-    vec3 planeCol = vec3( int(mod(id.x, 2)) ^ int(mod(id.y, 2)) );
+    //vec3 planeCol = randCol(p.xz - mod(p.xz, 1)+3.);
+    //vec3 planeCol = vec3( int(mod(id.x, 2)) ^ int(mod(id.y, 2)) );
+    vec3 planeCol = vec3(183, 135, 75)/100.;
 
     //return mix(getNormal(p)*.5+.5, sky, smoothstep(FAR*.5, FAR, dS));
     //return mix(planeCol, sky, smoothstep(FAR*.5, FAR, dS));
