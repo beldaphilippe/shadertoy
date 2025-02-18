@@ -19,6 +19,8 @@ uniform vec2 iMouse;
 #define ALT_MAX         1.5
 #define CAST_SHADOWS    1
 #define HARMONICS       9.
+// very important to avoid artifacts (factor can be changed a bit)
+#define R_FACTOR        .4
 
 // CODE
 
@@ -119,12 +121,14 @@ vec3 getNormal(vec3 p, int ha) {
     return normalize(n);
 }
 
-float rayMarching(vec3 ro, vec3 rd, int ha) {
-    float dO = 0.; // dist of item hit
+float rayMarching(vec3 ro, vec3 rd) {
+    float dO = 0.;  // dist of item hit
+    int ha;         // number of harmonics in fbm noise
     for (int i=0; i<MAX_STEPS; i++) {
         vec3 p = ro + rd*dO;
+        ha = int(max((1.-HARMONICS)/FAR * length(ro - p) + HARMONICS, 1.)); // harmonics
         float dS = getDist(p, ha);
-        dO += dS*.4; // very important to avoid artifacts (factor can be changed a bit)
+        dO += dS*R_FACTOR;
         if (dS<DIST_CONTACT || dO>FAR) break;
     }
     return dO;
@@ -139,7 +143,7 @@ float getLight2(vec3 p, int ha) {
 
     float diff = clamp(dot(n, l), 0., 1.); // dot product can be negative
     //float diff = smoothstep(0., 1., .5*dot(n, l) + .5); // dot product can be negative
-    float d = rayMarching(p + n*DIST_CONTACT*2., l, ha);
+    float d = rayMarching(p + n*DIST_CONTACT*2., l);
     if (d < length(lo-p)) diff = .1;                    // cast shadow
 
     //if (length(lo - p) < 1.) return 1.;
@@ -147,19 +151,32 @@ float getLight2(vec3 p, int ha) {
     return diff;
 }
 
-float getLight(vec3 p, int ha) {
+float getLight(vec3 p, vec3 ro, vec3 n) {
     // TODO : implement specular lighting
-    vec3 ld = normalize(vec3(1));                  // light direction
-    vec3 n = getNormal(p, ha);              // surface normal at point p
+    vec3 ld = normalize(vec3(1));           // light direction
+    //int ha = int(max((1.-HARMONICS)/FAR * length(ro - p) + HARMONICS, 1.)); // harmonics
+    //vec3 n = getNormal(p, ha);               // surface normal at point p
 
     // cast shadow
-    if (CAST_SHADOWS == 1)
-    if (rayMarching(p+2.*DIST_CONTACT*n, ld, ha) < FAR) return .1;
+    if (CAST_SHADOWS == 1) { // raymarching for cast shadows
+        vec3 rob = p+2.*DIST_CONTACT*n;
+        vec3 rd = ld;
+        float dO = 0.;      // dist of item hit
+        int ha;             // number of fbm harmonics
+        for (int i=0; i<MAX_STEPS; i++) {
+            vec3 pb = rob + rd*dO;
+            int ha = int(max((1.-HARMONICS)/FAR * length(ro - pb) + HARMONICS, 1.)); // harmonics
+            float dS = getDist(pb, ha);
+            dO += dS*R_FACTOR;
+            if (dS<DIST_CONTACT || dO>FAR) break;
+        }
+        if (dO < FAR) return .1;
+    }
 
     float diffuse = dot(n, ld); // diffuse component
     diffuse = mix(clamp(diffuse, 0., 1.), .5*diffuse+.5, .2); //+ 4.*smoothstep(.98, 1., diffuse); // diffuse and phong reflection
     float ambiant = .1;
-    return max(.7*diffuse, ambiant);
+    return max(.75*diffuse, ambiant);
 }
 
 vec3 getCamera(vec2 uv, out vec3 pos_camera) {
@@ -189,31 +206,61 @@ vec3 getCamera(vec2 uv, out vec3 pos_camera) {
     return rd;
 }
 
+vec3 waterMovement(vec2 uv) {
+    // source: https://www.shadertoy.com/view/MdlXz8
+    #define TAU 6.28318530718
+    #define MAX_ITER 4
+	float time = iTime * .5+23.0;
+    // uv should be the 0-1 uv of texture...
+    vec2 p = mod(uv*TAU, TAU)-250.0;
+	vec2 i = vec2(p);
+	float c = 1.0;
+	float inten = .005;
+
+	for (int n = 0; n < MAX_ITER; n++)
+	{
+		float t = time * (1.0 - (3.5 / float(n+1)));
+		i = p + vec2(cos(t - i.x) + sin(t + i.y), sin(t - i.y) + cos(t + i.x));
+		c += 1.0/length(vec2(p.x / (sin(i.x+t)/inten),p.y / (cos(i.y+t)/inten)));
+	}
+	c /= float(MAX_ITER);
+	c = 1.17-pow(c, 1.4);
+	vec3 colour = vec3(pow(abs(c), 8.0));
+    return clamp(colour + vec3(0.0, 0.35, 0.5), 0.0, 1.0);
+}
+
 vec3 render(vec3 ro, vec3 rd) {
 
-    vec3 sky = vec3(53, 81, 92)/100. - normalize(rd).y/4.;
-    //vec3 planeCol = vec3(0, 1, 0);
-
-    int ha = int(max((1.-HARMONICS)/FAR * length(ro - xz) + HARMONICS, 1.)); // harmonics
-    float dS = rayMarching(ro, rd, ha); // dist to a surface, id of item hit
+    float dS = rayMarching(ro, rd); // dist to a surface, id of item hit
     vec3 p = ro + rd*dS;            // hit point
-    float diff = getLight(p, ha);
+    int ha = int(max((1.-HARMONICS)/FAR * dS + HARMONICS, 1.)); /// number of fbm harmonics
+    vec3 n = getNormal(p, ha);
+    float diff = getLight(p, ro, n);
 
     // COLORS
+
+    vec3 pcolor;
     //vec2 id = p.xz - mod(p.xz, 1);
     //vec3 pcolor = randCol(p.xz - mod(p.xz, 1)+3.);
     //vec3 pcolor = vec3( int(mod(id.x, 2)) ^ int(mod(id.y, 2)) );
-    vec3 pcolor = vec3(183, 135, 75)/100.;
-    //vec3 grass = vec3(86, 125, 70)/100;
+    vec3 earth = vec3(183, 135, 75)/100.;
+    vec3 sky = vec3(53, 81, 92)/100. - normalize(rd).y/4.;
     vec3 grass = vec3(0, 1, 0);
+    vec3 snow = vec3(2);
     vec3 water = vec3(14, 135, 204)/100.;
-    pcolor = mix(pcolor, grass, dot(getNormal(p, ro), smoothstep(0., 2., abs(vec3(0,1,0)) )));
-    if (p.y < ALT_MAX*.51)
-        pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(getNormal(p, ro), vec3(0, 1, 0)))));
+
+    pcolor = earth;                                                                                                     // earth
+    pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
+    pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
+    if (p.y < ALT_MAX*.51) { // lakes
+        //pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(n, vec3(0, 1, 0)))));
+        //pcolor = water;
+        pcolor = 2. * waterMovement(p.xz);
+    }
 
     //return mix(getNormal(p, ro)*.5+.5, sky, smoothstep(FAR*.5, FAR, dS));
     //return mix(pcolor, sky, smoothstep(FAR*.5, FAR, dS));
-    return mix(pcolor * diff, sky, smoothstep(FAR*.4, FAR, dS));
+    return mix(pcolor * diff, sky, smoothstep(FAR*.4, FAR, dS)); // sky
 }
 
 void main(void)

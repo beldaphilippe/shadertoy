@@ -75,12 +75,12 @@ float noise(vec2 uv) {
 
 float noise_func(vec2 uv)
 {
-    //return noise(uv);               // good for maps
+    return noise(uv);               // good for maps
     //return noised(uv).x;
     //return hash(uv);
     //return hash12(uv);
     //return gold_noise(uv, 33.);
-    return N21(uv);                 // good complete randomness
+    //return N21(uv);                 // good complete randomness
 }
 
 vec3 getNormal2(vec2 p) {
