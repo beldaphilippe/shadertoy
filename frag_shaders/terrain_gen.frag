@@ -8,12 +8,17 @@ uniform vec2 iMouse;
 
 #define PI              3.14159265358979323846
 #define PHI             1.61803398874989484820459
-#define MAX_STEPS       100
-#define FAR             80.
-#define DIST_CONTACT    .01
-#define CAST_SHADOWS    1
 #define rot(a)          mat2( cos(a), -sin(a), sin(a), cos(a) )
 #define rotpi2          mat2(0, -1, 1, 0)
+
+// PARAMETERS
+
+#define MAX_STEPS       100
+#define DIST_CONTACT    .01
+#define FAR             50.
+#define ALT_MAX         1.5
+#define CAST_SHADOWS    1
+#define HARMONICS       9.
 
 // CODE
 
@@ -49,23 +54,16 @@ float noise(vec2 uv) {
     return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
 }
 
-float map(vec2 xz)
-{
+float mountains(vec2 xz, int ha) {
     float acc = 0.;
-    float amp = 2.;
+    float amp = ALT_MAX;
     float freq = 1.;
-    for (int i=0; i<9; i++) {
-        acc += amp * noise(xz);
+    for (int i=0; i<ha; i++) {
+        acc += amp * noise(xz * freq);
         xz = xz * rot(0.3); // rotation to avoid domain alignment
-        freq *= 4.;         // harmonics
-        amp *= .5;          // amplitude vary
+        freq *= 2.;         // harmonics
+        amp *= .3;          // amplitude vary
     }
-    return acc;
-}
-
-float map2(vec2 xz) {
-    float acc = 0.;
-    acc += 1. * noise(xz * rot(.4));
     return acc;
 }
 
@@ -105,45 +103,43 @@ vec3 rotOP(vec3 p, vec3 c) {
     return p;
 }
 
-float getDist(vec3 p)
+float getDist(vec3 p, int ha)
 {
-    vec2 id = p.xz - mod(p.xz, 5);
-    float r = N21(id);
-
-    //return p.y;
-    return p.y - map(p.xz);
+    float dm = p.y - mountains(p.xz, ha);
+    float dw = p.y - ALT_MAX * .5;
+    return min(dm, dw);
 }
 
-vec3 getNormal(vec3 p) {
-    float d = getDist(p);
+vec3 getNormal(vec3 p, int ha) {
+    float d = getDist(p, ha);
     vec2 e = vec2(.01, 0);
-    vec3 n = d - vec3(getDist(p-e.xyy),
-                      getDist(p-e.yxy),
-                      getDist(p-e.yyx));
+    vec3 n = d - vec3(getDist(p-e.xyy, ha),
+                      getDist(p-e.yxy, ha),
+                      getDist(p-e.yyx, ha));
     return normalize(n);
 }
 
-float rayMarching(vec3 ro, vec3 rd) {
+float rayMarching(vec3 ro, vec3 rd, int ha) {
     float dO = 0.; // dist of item hit
     for (int i=0; i<MAX_STEPS; i++) {
         vec3 p = ro + rd*dO;
-        float dS = getDist(p);
-        dO += dS*.3; // very important to avoid artifacts (factor can be changed a bit)
+        float dS = getDist(p, ha);
+        dO += dS*.4; // very important to avoid artifacts (factor can be changed a bit)
         if (dS<DIST_CONTACT || dO>FAR) break;
     }
     return dO;
 }
 
-float getLight2(vec3 p) {
+float getLight2(vec3 p, int ha) {
     vec3 lo = vec3(0, 3, 0); // light origin
     //lo.xz += 2.*vec2(cos(iTime), sin(iTime));
 
-    vec3 n = getNormal(p); // surface normal at point p
+    vec3 n = getNormal(p, ha); // surface normal at point p
     vec3 l = normalize(lo-p); // light vector
 
     float diff = clamp(dot(n, l), 0., 1.); // dot product can be negative
     //float diff = smoothstep(0., 1., .5*dot(n, l) + .5); // dot product can be negative
-    float d = rayMarching(p + n*DIST_CONTACT*2., l);
+    float d = rayMarching(p + n*DIST_CONTACT*2., l, ha);
     if (d < length(lo-p)) diff = .1;                    // cast shadow
 
     //if (length(lo - p) < 1.) return 1.;
@@ -151,14 +147,14 @@ float getLight2(vec3 p) {
     return diff;
 }
 
-float getLight(vec3 p) {
-    // TODO : implement phong reflection and specular lighting
+float getLight(vec3 p, int ha) {
+    // TODO : implement specular lighting
     vec3 ld = normalize(vec3(1));                  // light direction
-    vec3 n = getNormal(p);              // surface normal at point p
+    vec3 n = getNormal(p, ha);              // surface normal at point p
 
     // cast shadow
     if (CAST_SHADOWS == 1)
-    if (rayMarching(p+2.*DIST_CONTACT*n, ld) < FAR) return .1;
+    if (rayMarching(p+2.*DIST_CONTACT*n, ld, ha) < FAR) return .1;
 
     float diffuse = dot(n, ld); // diffuse component
     diffuse = mix(clamp(diffuse, 0., 1.), .5*diffuse+.5, .2); //+ 4.*smoothstep(.98, 1., diffuse); // diffuse and phong reflection
@@ -198,18 +194,26 @@ vec3 render(vec3 ro, vec3 rd) {
     vec3 sky = vec3(53, 81, 92)/100. - normalize(rd).y/4.;
     //vec3 planeCol = vec3(0, 1, 0);
 
-    float dS = rayMarching(ro, rd); // dist to a surface, id of item hit
+    int ha = int(max((1.-HARMONICS)/FAR * length(ro - xz) + HARMONICS, 1.)); // harmonics
+    float dS = rayMarching(ro, rd, ha); // dist to a surface, id of item hit
     vec3 p = ro + rd*dS;            // hit point
-    float diff = getLight(p);
+    float diff = getLight(p, ha);
 
-    vec2 id = p.xz - mod(p.xz, 1);
-    //vec3 planeCol = randCol(p.xz - mod(p.xz, 1)+3.);
-    //vec3 planeCol = vec3( int(mod(id.x, 2)) ^ int(mod(id.y, 2)) );
-    vec3 planeCol = vec3(183, 135, 75)/100.;
+    // COLORS
+    //vec2 id = p.xz - mod(p.xz, 1);
+    //vec3 pcolor = randCol(p.xz - mod(p.xz, 1)+3.);
+    //vec3 pcolor = vec3( int(mod(id.x, 2)) ^ int(mod(id.y, 2)) );
+    vec3 pcolor = vec3(183, 135, 75)/100.;
+    //vec3 grass = vec3(86, 125, 70)/100;
+    vec3 grass = vec3(0, 1, 0);
+    vec3 water = vec3(14, 135, 204)/100.;
+    pcolor = mix(pcolor, grass, dot(getNormal(p, ro), smoothstep(0., 2., abs(vec3(0,1,0)) )));
+    if (p.y < ALT_MAX*.51)
+        pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(getNormal(p, ro), vec3(0, 1, 0)))));
 
-    //return mix(getNormal(p)*.5+.5, sky, smoothstep(FAR*.5, FAR, dS));
-    //return mix(planeCol, sky, smoothstep(FAR*.5, FAR, dS));
-    return mix(planeCol * diff, sky, smoothstep(FAR*.4, FAR, dS));
+    //return mix(getNormal(p, ro)*.5+.5, sky, smoothstep(FAR*.5, FAR, dS));
+    //return mix(pcolor, sky, smoothstep(FAR*.5, FAR, dS));
+    return mix(pcolor * diff, sky, smoothstep(FAR*.4, FAR, dS));
 }
 
 void main(void)

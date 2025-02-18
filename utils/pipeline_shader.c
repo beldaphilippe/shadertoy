@@ -12,8 +12,6 @@
 #include "../build/shader_path.h"
 
 #define VERT_SHADER_PATH "simple_shader.vert"
-/*#define FRAG_SHADER_PATH "frag_shaders/deformations.frag"*/
-/*#define FRAG_SHADER_PATH "aa.frag"*/
 
 int main() {
     if (!glfwInit()) {
@@ -27,7 +25,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "shader exp", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 600, FRAG_SHADER_PATH, NULL, NULL);
     if (!window) {
         printf("Failed to create GLFW window\n");
         glfwTerminate();
