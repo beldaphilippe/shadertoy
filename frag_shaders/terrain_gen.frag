@@ -18,7 +18,7 @@ uniform vec2 iMouse;
 #define FAR             50.
 #define ALT_MAX         1.5
 #define CAST_SHADOWS    1
-#define HARMONICS       9.
+#define HARMONICS       6.
 // very important to avoid artifacts (factor can be changed a bit)
 #define R_FACTOR        .4
 
@@ -54,6 +54,20 @@ float noise(vec2 uv) {
     vec2 t = smoothstep(0.0, 1.0, fpos);
 
     return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
+}
+
+float voronoi(vec2 uv) {
+    float dmin;
+    vec2 ruv;
+    vec2 id;
+    vec2 rvoi;
+    for (int i=0; i<10; i++) {
+        ruv = mod(uv, 1);   // relative uv
+        id = uv - ruv;      // id of cell
+        rvoi = N21(id + i);     // relative pos of voroi point
+        dmin = min(dmin, length(ruv - rvoi);
+    }
+    return dmin;
 }
 
 float mountains(vec2 xz, int ha) {

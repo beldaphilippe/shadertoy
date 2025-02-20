@@ -50,6 +50,39 @@ float noise(vec2 uv) {
     return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
 }
 
+// TODO
+float voronoi(vec2 uv) {
+    float dmin = 1.;
+    vec2 ruv;
+    vec2 id;
+    vec2 rvoi;
+    float resolution = 1.;
+    for (int i=-1; i<2; i++)
+    for (int j=-1; i<2; i++) {
+        ruv = mod(uv, resolution);      // relative uv
+        id = (uv - ruv) / resolution;   // id of cell
+        id += vec2(i, j);
+        rvoi = vec2(N21(id), N21(id + .5)); // relative pos of voroi point
+        dmin = min(dmin, length(ruv - rvoi));
+    }
+    return dmin*5.;
+}
+
+float voronoi_bak(vec2 uv) {
+    float dmin = 1.;
+    vec2 ruv;
+    vec2 id;
+    vec2 rvoi;
+    float resolution = 1.;
+    for (int i=0; i<5; i++) {
+        ruv = mod(uv, resolution);      // relative uv
+        id = (uv - ruv) / resolution;   // id of cell
+        rvoi = vec2(N21(id + i), N21(id + float(i)*.5)); // relative pos of voroi point
+        dmin = min(dmin, length(ruv - rvoi));
+    }
+    return dmin;
+}
+
 // returns 3D value noise (in .x)  and its derivatives (in .yz)
 //vec3 noised( vec2 p ) {
     //vec2 i = floor( p );
@@ -75,7 +108,8 @@ float noise(vec2 uv) {
 
 float noise_func(vec2 uv)
 {
-    return noise(uv);               // good for maps
+    //return noise(uv);               // good for maps
+    return voronoi(uv);
     //return noised(uv).x;
     //return hash(uv);
     //return hash12(uv);
