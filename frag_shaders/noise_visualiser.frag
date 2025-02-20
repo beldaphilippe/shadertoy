@@ -23,7 +23,8 @@ float N21(vec2 p) {
 }
 
 float gold_noise(in vec2 xy, in float seed){
-       return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
+    xy += 10.;
+    return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
 }
 
 float hash12(vec2 p) {
@@ -50,22 +51,22 @@ float noise(vec2 uv) {
     return mix(mix(a, b, t.x), mix(c, d, t.x), t.y);
 }
 
-// TODO
 float voronoi(vec2 uv) {
-    float dmin = 1.;
-    vec2 ruv;
+    float resolution = 2.;
+    float dmin = 2.*resolution*resolution;                // distance to closest voronoi cell
+    vec2 ruv = mod(uv, resolution); // relative uv in the cell
     vec2 id;
     vec2 rvoi;
-    float resolution = 1.;
+    vec2 d;
     for (int i=-1; i<2; i++)
-    for (int j=-1; i<2; i++) {
-        ruv = mod(uv, resolution);      // relative uv
+    for (int j=-1; j<2; j++) {
         id = (uv - ruv) / resolution;   // id of cell
         id += vec2(i, j);
-        rvoi = vec2(N21(id), N21(id + .5)); // relative pos of voroi point
-        dmin = min(dmin, length(ruv - rvoi));
+        rvoi = ( vec2(i,j) + vec2(gold_noise(id, 33.), gold_noise(id + resolution*.3, 33.)) ) * resolution; // relative pos of voroi point
+        d = ruv - rvoi;
+        dmin = min(dmin, dot(d,d));
     }
-    return dmin*5.;
+    return sqrt(dmin) / resolution;
 }
 
 float voronoi_bak(vec2 uv) {
