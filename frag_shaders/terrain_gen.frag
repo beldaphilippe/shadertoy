@@ -18,7 +18,7 @@ uniform vec2 iMouse;
 #define FAR             50.
 #define ALT_MAX         1.5
 #define CAST_SHADOWS    1
-#define HARMONICS       5.
+#define HARMONICS       8.
 // very important to avoid artifacts (factor can be changed a bit)
 #define R_FACTOR        .4
 
@@ -75,12 +75,33 @@ float voronoi(vec2 uv) {
     return sqrt(dmin) / resolution;
 }
 
+float voronoi_flat(vec2 uv) {
+    float resolution = 2.;
+    float dmin = 2.*resolution*resolution;                // distance to closest voronoi cell
+    vec2 ruv = mod(uv, resolution); // relative uv in the cell
+    vec2 id, rvoi, d, idmin;
+    float dsq;
+    for (int i=-1; i<2; i++)
+    for (int j=-1; j<2; j++) {
+        id = (uv - ruv) / resolution;   // id of cell
+        id += vec2(i, j);
+        rvoi = ( vec2(i,j) + vec2(gold_noise(id, 33.), gold_noise(id + resolution*.3, 33.)) ) * resolution; // relative pos of voroi point
+        d = ruv - rvoi;
+        dsq = dot(d,d);
+        if (dmin > dsq) {
+            idmin = id;
+            dmin = dsq;
+        }
+    }
+    return hash(idmin);
+}
+
 float mountains(vec2 xz, int ha) {
     float acc = 0.;
     float amp = ALT_MAX;
     float freq = 1.;
     for (int i=0; i<ha; i++) {
-        acc += amp * voronoi(xz * freq);
+        acc += amp * noise(xz * freq);
         xz = xz * rot(0.3); // rotation to avoid domain alignment
         freq *= 2.;         // harmonics
         amp *= .3;          // amplitude vary
@@ -246,6 +267,30 @@ vec3 waterMovement(vec2 uv) {
 	c = 1.17-pow(c, 1.4);
 	vec3 colour = vec3(pow(abs(c), 8.0));
     return clamp(colour + vec3(0.0, 0.35, 0.5), 0.0, 1.0);
+}
+
+vec3 mountain_biom(vec2 uv) {
+    // COLORS
+
+    vec3 pcolor;
+    vec3 earth = vec3(183, 135, 75)/100.;
+    vec3 sky = vec3(53, 81, 92)/100. - normalize(rd).y/4.;
+    vec3 grass = vec3(0, 1, 0);
+    vec3 snow = vec3(2);
+    vec3 water = vec3(14, 135, 204)/100.;
+
+    pcolor = earth;                                                                                                     // earth
+    pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
+    pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
+    if (p.y < ALT_MAX*.51) { // lakes
+        //pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(n, vec3(0, 1, 0)))));
+        pcolor = water;
+        //pcolor = 2. * waterMovement(p.xz);
+    }
+}
+
+vec3 biomes(vec2 uv) {
+
 }
 
 vec3 render(vec3 ro, vec3 rd) {

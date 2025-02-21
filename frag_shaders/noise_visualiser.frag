@@ -55,9 +55,7 @@ float voronoi(vec2 uv) {
     float resolution = 2.;
     float dmin = 2.*resolution*resolution;                // distance to closest voronoi cell
     vec2 ruv = mod(uv, resolution); // relative uv in the cell
-    vec2 id;
-    vec2 rvoi;
-    vec2 d;
+    vec2 id, rvoi, d;
     for (int i=-1; i<2; i++)
     for (int j=-1; j<2; j++) {
         id = (uv - ruv) / resolution;   // id of cell
@@ -67,6 +65,34 @@ float voronoi(vec2 uv) {
         dmin = min(dmin, dot(d,d));
     }
     return sqrt(dmin) / resolution;
+}
+
+float voronoi_flat(vec2 uv) {
+    float resolution = 2.;
+    float dmin = 2.*resolution*resolution;                // distance to closest voronoi cell
+    vec2 ruv = mod(uv, resolution); // relative uv in the cell
+    vec2 id, rvoi, d, idmin;
+    float dsq;
+    for (int i=-1; i<2; i++)
+    for (int j=-1; j<2; j++) {
+        id = (uv - ruv) / resolution;   // id of cell
+        id += vec2(i, j);
+        rvoi = ( vec2(i,j) + vec2(gold_noise(id, 33.), gold_noise(id + resolution*.3, 33.)) ) * resolution; // relative pos of voroi point
+        d = ruv - rvoi;
+        dsq = dot(d,d);
+        if (dmin > dsq) {
+            idmin = id;
+            dmin = dsq;
+        }
+    }
+    return hash(idmin);
+}
+
+vec3 hash3( vec2 p ) {
+    vec3 q = vec3( dot(p,vec2(127.1,311.7)),
+				   dot(p,vec2(269.5,183.3)),
+				   dot(p,vec2(419.2,371.9)) );
+	return fract(sin(q)*43758.5453);
 }
 
 float voronoi_bak(vec2 uv) {
@@ -84,33 +110,11 @@ float voronoi_bak(vec2 uv) {
     return dmin;
 }
 
-// returns 3D value noise (in .x)  and its derivatives (in .yz)
-//vec3 noised( vec2 p ) {
-    //vec2 i = floor( p );
-    //vec2 f = fract( p );
-
-    //vec2 u = f*f*f*(f*(f*6.0-15.0)+10.0);
-    //vec2 du = 30.0*f*f*(f*(f-2.0)+1.0);
-
-    //vec2 ga = hash( i + vec2(0) );
-    //vec2 gb = hash( i + vec2(1.0,0.0) );
-    //vec2 gc = hash( i + vec2(0.0,1.0) );
-    //vec2 gd = hash( i + vec2(1.0,1.0) );
-
-    //float va = dot( ga, f - vec2(0.0,0.0) );
-    //float vb = dot( gb, f - vec2(1.0,0.0) );
-    //float vc = dot( gc, f - vec2(0.0,1.0) );
-    //float vd = dot( gd, f - vec2(1.0,1.0) );
-
-    //return vec3( va + u.x*(vb-va) + u.y*(vc-va) + u.x*u.y*(va-vb-vc+vd),   // value
-                 //ga + u.x*(gb-ga) + u.y*(gc-ga) + u.x*u.y*(ga-gb-gc+gd) +  // derivatives
-                 //du * (u.yx*(va-vb-vc+vd) + vec2(vb,vc) - va));
-//}
-
 float noise_func(vec2 uv)
 {
     //return noise(uv);               // good for maps
-    return voronoi(uv);
+    //return voronoi(uv);
+    return voronoi_flat(uv);
     //return noised(uv).x;
     //return hash(uv);
     //return hash12(uv);
@@ -118,7 +122,7 @@ float noise_func(vec2 uv)
     //return N21(uv);                 // good complete randomness
 }
 
-vec3 getNormal2(vec2 p) {
+vec3 getNormal(vec2 p) {
     vec3 l = vec3(p.x, p.y, noise_func(p));
     vec2 eps = vec2(.001, 0.);
     vec3 dx = vec3(p.x + eps.x, p.y, noise_func(p + eps.xy)) - l;
@@ -137,7 +141,7 @@ void main(void)
     vec3 grad;
 
     height = vec3(noise_func(uv+vec2(.5*s,0)));
-    grad = vec3(getNormal2(uv));
+    grad = vec3(getNormal(uv));
     //grad = vec3(crossnoised(uv).yz, 0);
 
     gl_FragColor = vec4( (uv.x>0.)?grad:height, 1.0);
