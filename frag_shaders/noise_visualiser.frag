@@ -22,6 +22,10 @@ float N21(vec2 p) {
     return fract(sin(p.x*24. + p.y*605.)*4879.);
 }
 
+vec2 N22(vec2 uv) {
+    return vec2(N21(uv), N21(uv+.3));
+}
+
 float gold_noise(in vec2 xy, in float seed){
     xy += 10.;
     return fract(tan(distance(xy*PHI, xy)*seed)*xy.x);
@@ -35,6 +39,10 @@ float hash12(vec2 p) {
 
 float hash(vec2 uv) {
     return fract(sin(dot(uv, vec2(73211.171, 841.13))) * 32131.18128);
+}
+
+vec2 hash2(vec2 uv) {
+    return vec2(hash(uv), hash(uv+.3));
 }
 
 float noise(vec2 uv) {
@@ -52,7 +60,7 @@ float noise(vec2 uv) {
 }
 
 float voronoi(vec2 uv) {
-    float resolution = 2.;
+    float resolution = 1.;
     float dmin = 2.*resolution*resolution;                // distance to closest voronoi cell
     vec2 ruv = mod(uv, resolution); // relative uv in the cell
     vec2 id, rvoi, d;
@@ -67,7 +75,87 @@ float voronoi(vec2 uv) {
     return sqrt(dmin) / resolution;
 }
 
-float voronoi_flat(vec2 uv) {
+vec4 voronoi_dev(vec2 uv) {
+    // https://www.shadertoy.com/view/ldl3W8
+    vec2 ip = floor(uv); // integer part
+    vec2 fp = fract(uv); // fractional part
+
+    //----------------------------------
+    // first pass: regular voronoi
+    //----------------------------------
+	vec2 mg, mr;
+
+    float md = 8.0; // min dist
+    for( int j=-1; j<=1; j++ )
+    for( int i=-1; i<=1; i++ )
+    {
+        vec2 g = vec2(float(i),float(j));   // relative grid cell considered
+		vec2 o = hash2( ip + g );           // offset to center of voronoi cell
+        vec2 r = g + o - fp;                // vector from uv to voronoi center considered
+        float d = dot(r,r);
+        if( d<md )
+        {
+            md = d;
+            mr = r;
+            mg = g;
+        }
+    }
+    //----------------------------------
+    // second pass: distance to borders
+    //----------------------------------
+    md = 8.0;
+    for( int j=-2; j<=2; j++ )
+    for( int i=-2; i<=2; i++ )
+    {
+        vec2 g = mg + vec2(float(i),float(j));
+		vec2 o = hash2( ip + g );
+        vec2 r = g + o - fp;
+
+        if( dot(mr-r,mr-r)>0.00001 )
+        md = min( md, dot( 0.5*(mr+r), normalize(r-mr) ) );
+    }
+
+    return vec4(md, hash(ip+mg), mr);
+}
+
+float voronoi_iso(vec2 uv) {
+    float dmin = 3.;                // distance to closest voronoi cell
+    vec2 ruv = fract(uv); // relative uv in the cell
+    vec2 id, rvoi, d;
+    for (int i=-1; i<2; i++)
+    for (int j=-1; j<2; j++) {
+        id = (uv - ruv);   // id of cell
+        id += vec2(i, j);
+        rvoi = ( vec2(i,j) + vec2(gold_noise(id, 33.), gold_noise(id + .3, 33.)) ); // relative pos of voroi point
+        d = ruv - rvoi;
+        dmin = min(dmin, dot(d,d));
+    }
+    return float(int(sqrt(dmin) * 10.)/10.);
+}
+
+vec2 voronoi_flat(vec2 uv) {
+    // return the color of voronoi cell and the distance to the center
+    float resolution = 1.;
+    float dmin = 2.*resolution*resolution;                // distance to closest voronoi cell
+    vec2 ruv = mod(uv, resolution); // relative uv in the cell
+    vec2 id, rvoi, d, idmin;
+    float dsq;
+    for (int i=-1; i<2; i++)
+    for (int j=-1; j<2; j++) {
+        id = (uv - ruv) / resolution;   // id of cell
+        id += vec2(i, j);
+        rvoi = ( vec2(i,j) + vec2(gold_noise(id, 33.), gold_noise(id + resolution*.3, 33.)) ) * resolution; // relative pos of voroi point
+        d = ruv - rvoi;
+        dsq = dot(d,d);
+        if (dmin > dsq) {
+            idmin = id;
+            dmin = dsq;
+        }
+    }
+    return vec2(hash(idmin), sqrt(dmin) / resolution);
+}
+
+float voronoi_flat2(vec2 uv) {
     float resolution = 2.;
     float dmin = 2.*resolution*resolution;                // distance to closest voronoi cell
     vec2 ruv = mod(uv, resolution); // relative uv in the cell
@@ -110,11 +198,45 @@ float voronoi_bak(vec2 uv) {
     return dmin;
 }
 
+vec2 voronoi_ref( in vec2 x, out vec2 oA, out vec2 oB ) {
+    ivec2 p = ivec2(floor( x ));
+    vec2  f = fract( x );
+
+    vec2 res = vec2( 8.0 );
+    for( int j=-1; j<=1; j++ )
+    for( int i=-1; i<=1; i++ )
+    {
+        ivec2 b = ivec2(i, j);
+        vec2  r = vec2(b) - f + vec2(N21(p+b), N21(p+b+5));
+        //vec2  r = vec2(b) - f + random2f(p+b);
+        float d = dot( r, r );
+
+        if( d < res.x )
+        {
+            res.y = res.x;
+            res.x = d;
+            oA = r;
+        }
+        else if( d < res.y )
+        {
+            res.y = d;
+            oB = r;
+        }
+    }
+
+    return sqrt( res );
+}
+
 float noise_func(vec2 uv)
 {
     //return noise(uv);               // good for maps
     //return voronoi(uv);
-    return voronoi_flat(uv);
+    return voronoi_dev(uv).y;
+    vec2 a, b;
+    return float(int(voronoi_ref(uv,a,b).y*10.)/10.);
+    //return voronoi_iso(uv);
+    //return voronoi_flat(uv).y;
+    //return voronoi_flat2(uv);
     //return noised(uv).x;
     //return hash(uv);
     //return hash12(uv);
