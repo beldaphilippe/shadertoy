@@ -21,7 +21,7 @@ uniform vec2 iMouse;
 
 #define ALT_MAX         1.5
 //#define CAST_SHADOWS
-#define HARMONICS       4.
+#define HARMONICS       9.
 #define BIOME_SIZE      4.
 
 // CODE
@@ -201,14 +201,16 @@ float getDist(vec3 p, int ha)
     //float dm = p.y - mountains(p.xz, ha);
     //float dw = p.y - ALT_MAX * .5;
     float dm = mountains(p.xz, ha);
-    dm = ALT_MAX;
+    //dm = ALT_MAX;
     float dw = ALT_MAX*.5;
     if (s.x<.5) {
+        return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
+        return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
+
         //return p.y - dm;
         //return p.y - ((dm-dw)*smoothstep( .1*BIOME_SIZE, 0., s.y) + dw);
         //return p.y - max(dw, dm*(1.-3.*s.y*s.y/BIOME_SIZE));
         //return p.y - ((dm-dw)*smoothstep(BIOME_SIZE/12., BIOME_SIZE/10., s.y)+dw);
-        return p.y - ((dm-dw)*smoothstep(0.001, .2, s.y)+dw);
         //return p.y - (dm-dw)*(1.-3.*s.y*s.y/BIOME_SIZE)-dw;
         //return p.y - max((dm-dw)*smoothstep( .4*BIOME_SIZE, 0., s.y) + dw, dw);
         //return p.y - max(mix(mm, ww, s.y*2.), ww);
