@@ -168,7 +168,7 @@ vec3 randCol(vec2 id) {
 
 float sdSphere(vec3 p, float radius) {
     vec3 center = vec3(0.);
-    p.z = 2.*p.z;
+    p.y = .5*p.y;
     return length(p) - radius;
 }
 
@@ -211,7 +211,6 @@ float getDist(vec3 p, int ha)
     float dw = ALT_MAX*.5;
     if (s.x<.3) {
         return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
-        return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
 
         //return p.y - dm;
         //return p.y - ((dm-dw)*smoothstep( .1*BIOME_SIZE, 0., s.y) + dw);
@@ -226,7 +225,8 @@ float getDist(vec3 p, int ha)
         vec2 id = floor(p.xz/period);
         vec3 dl = vec3(0);
         dl.xz = .1*(hash2(id)-.5);
-        return min(sdSphere(repOP(transOP(p, vec3(0, 1.1*dw, 0)+dl), vec3(period, 0, period)), .05), p.y-dw);
+        dm = max(dw, .4 + .5*(((dm-dw)*smoothstep(0.00, .2, s.y)+dw)));
+        return min(sdSphere(repOP(transOP(p, vec3(0, dm, 0)+dl), vec3(period, 0, period)), .05), p.y-dm);
     }
     else
         return p.y - dw;
