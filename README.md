@@ -2,7 +2,7 @@
 
 This repository is made to experiment around fragment shaders in GLSL. I particularly focused on raymarching and the different way of using the signed distance function to render some interesting forms/landscapes.
 
-I was introduced to fragment shaders through the website [Shadertoy](shadertoy.com), so i also made a file to export a fragment shader to the format of [Shadertoy](shadertoy.com) and vice-versa.
+I was introduced to fragment shaders through the website [Shadertoy](https://www.shadertoy.com/), so i also made a file to export a fragment shader to the format of [Shadertoy](https://www.shadertoy.com/) and vice-versa.
 
 # Usage
 
