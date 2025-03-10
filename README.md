@@ -2,14 +2,14 @@
 
 This repository is made to experiment around fragment shaders in GLSL. I particularly focused on raymarching and the different way of using the signed distance function to render some interesting forms/landscapes.
 
-I was introduced to fragment shaders through the website shadertoy.com, so i also made a file to export a fragment shader to the format of Shadertoy and vice-versa.
+I was introduced to fragment shaders through the website [Shadertoy](shadertoy.com), so i also made a file to export a fragment shader to the format of [Shadertoy](shadertoy.com) and vice-versa.
 
 # Usage
 
 * clone the repository with `git clone git@github.com:beldaphilippe/shadertoy.git`
 * cd to the main folder and call `make compile SHADER_PATH=frag_shaders\<name_of_shader> && make run`
 
-## Note 
+## Note
 
 As I did not include all libraries to run opengl, you must have to some extent a basic installation of OpenGL to run the shaders.
 
