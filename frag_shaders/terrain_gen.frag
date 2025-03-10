@@ -166,6 +166,12 @@ vec3 randCol(vec2 id) {
                 gold_noise(id, seed+0.3)); // b
 }
 
+float sdSphere(vec3 p, float radius) {
+    vec3 center = vec3(0.);
+    p.z = 2.*p.z;
+    return length(p) - radius;
+}
+
 vec3 transOP(vec3 p, vec3 d) {
     return p -d;
 }
@@ -203,7 +209,7 @@ float getDist(vec3 p, int ha)
     float dm = mountains(p.xz, ha);
     //dm = ALT_MAX;
     float dw = ALT_MAX*.5;
-    if (s.x<.5) {
+    if (s.x<.3) {
         return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
         return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
 
@@ -214,6 +220,13 @@ float getDist(vec3 p, int ha)
         //return p.y - (dm-dw)*(1.-3.*s.y*s.y/BIOME_SIZE)-dw;
         //return p.y - max((dm-dw)*smoothstep( .4*BIOME_SIZE, 0., s.y) + dw, dw);
         //return p.y - max(mix(mm, ww, s.y*2.), ww);
+    }
+    else if (.3 < s.x && s.x < .9) {
+        float period = .2;
+        vec2 id = floor(p.xz/period);
+        vec3 dl = vec3(0);
+        dl.xz = .1*(hash2(id)-.5);
+        return min(sdSphere(repOP(transOP(p, vec3(0, 1.1*dw, 0)+dl), vec3(period, 0, period)), .05), p.y-dw);
     }
     else
         return p.y - dw;
@@ -343,6 +356,7 @@ vec3 mountain_biome(vec3 p, vec3 n) {
     vec3 grass = vec3(0, 1, 0);
     vec3 snow = vec3(2);
     vec3 water = vec3(14, 135, 204)/100.;
+    //vec3 water = waterMovement(p.xz);
 
     pcolor = earth;                                                                                                     // earth
     pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
@@ -355,15 +369,22 @@ vec3 mountain_biome(vec3 p, vec3 n) {
     return pcolor;
 }
 
+vec3 forest_biome(vec3 p, vec3 n) {
+    return vec3(12, 238, 149)/100.;
+}
+
 vec3 marshes_biome(vec3 p, vec3 n) {
+    //return waterMovement(p.xz);
     return vec3(14, 135, 204)/100.;
 }
 
 vec3 biomes(vec3 p, vec3 n) {
     float s = voronoi_dev(p.xz/BIOME_SIZE).y; // shade of voronoi cell
-    if (s<.5)
+    if (s<.3)
         return mountain_biome(p, n);
-    else
+    else if (.3<s && s<.9) {
+        return forest_biome(p, n);
+    } else
         return marshes_biome(p, n);
 }
 
