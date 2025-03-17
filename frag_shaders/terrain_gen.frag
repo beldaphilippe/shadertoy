@@ -23,6 +23,7 @@ uniform vec2 iMouse;
 //#define CAST_SHADOWS
 #define HARMONICS       9.
 #define BIOME_SIZE      4.
+float BIOME_DENSITY[2] = float[] (.6, .9);
 
 // CODE
 
@@ -209,7 +210,7 @@ float getDist(vec3 p, int ha)
     float dm = mountains(p.xz, ha);
     //dm = ALT_MAX;
     float dw = ALT_MAX*.5;
-    if (s.x<.3) {
+    if (s.x < BIOME_DENSITY[0]) {
         return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
 
         //return p.y - dm;
@@ -220,7 +221,7 @@ float getDist(vec3 p, int ha)
         //return p.y - max((dm-dw)*smoothstep( .4*BIOME_SIZE, 0., s.y) + dw, dw);
         //return p.y - max(mix(mm, ww, s.y*2.), ww);
     }
-    else if (.3 < s.x && s.x < .9) {
+    else if (s.x < BIOME_DENSITY[1]) {
         float period = .2;
         vec2 id = floor(p.xz/period);
         vec3 dl = vec3(0);
@@ -361,15 +362,23 @@ vec3 mountain_biome(vec3 p, vec3 n) {
     pcolor = earth;                                                                                                     // earth
     pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
     pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
-    if (p.y < ALT_MAX*.51) { // lakes
-        //pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(n, vec3(0, 1, 0)))));
-        pcolor = water;
-        //pcolor = 2. * waterMovement(p.xz);
-    }
+    //if (p.y < ALT_MAX*.51) { // lakes
+        ////pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(n, vec3(0, 1, 0)))));
+        //pcolor = water;
+        ////pcolor = 2. * waterMovement(p.xz);
+    //}
     return pcolor;
 }
 
 vec3 forest_biome(vec3 p, vec3 n) {
+    vec3 pcolor;
+    vec3 earth = vec3(183, 135, 75)/100.;
+    vec3 grass = vec3(0,1,0);
+    vec3 snow = vec3(2);
+    pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
+    pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
+    return pcolor;
+    return vec3(0, 1, 0);
     return vec3(12, 238, 149)/100.;
 }
 
@@ -380,9 +389,9 @@ vec3 marshes_biome(vec3 p, vec3 n) {
 
 vec3 biomes(vec3 p, vec3 n) {
     float s = voronoi_dev(p.xz/BIOME_SIZE).y; // shade of voronoi cell
-    if (s<.3)
+    if (s<BIOME_DENSITY[0])
         return mountain_biome(p, n);
-    else if (.3<s && s<.9) {
+    else if (s<BIOME_DENSITY[1]) {
         return forest_biome(p, n);
     } else
         return marshes_biome(p, n);
