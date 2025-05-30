@@ -210,7 +210,7 @@ float getDist(vec3 p, int ha)
     float dm = mountains(p.xz, ha);
     //dm = ALT_MAX;
     float dw = ALT_MAX*.5;
-    if (s.x < BIOME_DENSITY[0]) {
+    if (s.x < BIOME_DENSITY[0]) { // mountains
         return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
 
         //return p.y - dm;
@@ -220,17 +220,17 @@ float getDist(vec3 p, int ha)
         //return p.y - (dm-dw)*(1.-3.*s.y*s.y/BIOME_SIZE)-dw;
         //return p.y - max((dm-dw)*smoothstep( .4*BIOME_SIZE, 0., s.y) + dw, dw);
         //return p.y - max(mix(mm, ww, s.y*2.), ww);
-    }
-    else if (s.x < BIOME_DENSITY[1]) {
+    } else if (s.x < BIOME_DENSITY[1]) { // Forest
         float period = .2;
         vec2 id = floor(p.xz/period);
         vec3 dl = vec3(0);
         dl.xz = .1*(hash2(id)-.5);
         dm = max(dw, .4 + .5*(((dm-dw)*smoothstep(0.00, .2, s.y)+dw)));
-        return min(sdSphere(repOP(transOP(p, vec3(0, dm, 0)+dl), vec3(period, 0, period)), .05), p.y-dm);
+         return min(sdSphere(repOP(transOP(p, vec3(0, dm, 0)+dl), vec3(period, 0, period)), .05), p.y-dm);
     }
-    else
+    else { // water
         return p.y - dw;
+    }
 }
 
 vec3 getNormal(vec3 p, int ha) {
@@ -370,11 +370,14 @@ vec3 mountain_biome(vec3 p, vec3 n) {
     return pcolor;
 }
 
+// broken
 vec3 forest_biome(vec3 p, vec3 n) {
     vec3 pcolor;
     vec3 earth = vec3(183, 135, 75)/100.;
     vec3 grass = vec3(0,1,0);
+//    return grass;
     vec3 snow = vec3(2);
+    pcolor = earth;
     pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
     pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
     return pcolor;

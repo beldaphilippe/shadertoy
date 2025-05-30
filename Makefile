@@ -3,7 +3,7 @@ SRCS_EXT 			= utils/external/glew-2.1.0/src/glew.c
 OUT  	 			= build/shader_display
 LIBS	 			= -Iutils/external/glew-2.1.0/include -lGL -lglfw #-lGLEW
 FLAGS	 			= #-Wall -Wextra -fsanitize=address,undefined
-SHADER_PATH 	   ?= frag_shaders/simple_shader.frag
+SHADER_PATH 	   	?= frag_shaders/simple_shader.frag
 SHADER_PATH_FILE	= build/shader_path.h
 
 all: compile
@@ -24,3 +24,6 @@ test:
 
 clean:
 	rm -r ./build
+
+help:
+	@echo -e 'Usage :\n\t make compile SHADER_PATH="<shader_path>"\n\t make run'
