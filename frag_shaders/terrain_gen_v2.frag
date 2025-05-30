@@ -8,10 +8,11 @@ uniform vec2 iMouse;            // mouse position (px)
 
 #define PI              3.14159265358979323846
 #define PHI             1.61803398874989484820459
-#define rot(a)          mat2( cos(a), -sin(a), sin(a), cos(a) )
+#define rot(a)          mat2(cos(a), -sin(a), sin(a), cos(a))
 #define rotpi2          mat2(0, -1, 1, 0)
 
-// noises
+// Noises
+
 float N21_1(vec2 p) {
    return fract(sin(p.x*24. + p.y*605.)*4879.);
 }
@@ -170,26 +171,13 @@ vec3 rotTOP(vec3 p, vec3 c) {
 #define DIST_CONTACT    .01     // distance of contact for ray marching
 #define FAR             50.     // maximum render distance
 
-#define ALT_MAX         1.5     // maximum altitude, to shape terrain
-//#define CAST_SHADOWS          // enables cast shadows
-#define HARMONICS       9.      // number of harmonics of the Brownian noise used for terrain
+#define ALT_MAX         1.      // maximum altitude, to shape terrain
+// #define CAST_SHADOWS          // enables cast shadows
+#define HARMONICS       2.      // number of harmonics of the Brownian noise used for terrain
 #define BIOME_SIZE      9.      // factor for the size of different biomes (voronoi cells)
-float BIOME_DENSITY[2] = float[] (.6, .9); // the probability interval of apparition of each biome (in [0, 1])
+float BIOME_DENSITY[2] = float[] (.6, .8); // the probability interval of apparition of each biome (in [0, 1])
 
 // CODE ===
-
-float mountains(vec2 xz, int ha) {
-   float acc = 0.;
-   float amp = ALT_MAX;
-   float freq = 1.;
-   for (int i=0; i<ha; i++) {
-      acc += amp * N21_4(xz * freq);
-      xz = xz * rot(0.3); // rotation to avoid domain alignment
-      freq *= 2.;         // harmonics
-      amp *= .3;          // amplitude vary
-   }
-   return acc;
-}
 
 vec3 randCol(vec2 id) {
    float seed = 33.;
@@ -198,65 +186,98 @@ vec3 randCol(vec2 id) {
                gold_noise(id, seed+0.3)); // b
 }
 
+// Distance to mountains in <xz>.
+// Moutains are drawn with a Fractional Brownian Motion with <harmonics> harmonics.
+float sdMountains(vec3 p, int harmonics) {
+   float dist = p.y;             // distance of <p> to mountains
+   float amp = ALT_MAX;         // initial amplitude of fBM
+   float freq = 1.;             // initial frequence of fBM
+   for (int i=0; i<harmonics; i++) {
+      if (dist > amp * 20) break; // if subsequent harmonics do not bring significanly more precision, break
+      dist -= amp * N21_4(p.xz * freq);
+      p.xz = p.xz * rot(0.3);   // rotation to avoid domain alignment
+      freq *= 2.;               // harmonics
+      amp *= .3;                // amplitude variation
+   }
+   return dist;
+}
+
+// Sdf of a sphere of radius <radius>.
 float sdSphere(vec3 p, float radius) {
    vec3 center = vec3(0.);
    p.y = .5*p.y;
    return length(p) - radius;
 }
 
-
-
-float getDist(vec3 p, int ha)
+// Sdf of the universe.
+// Return the distance to the closest object as well as its id.
+// <harmonics> is used to generate the Fractional Brownian Motion.
+vec2 getDist(vec3 p, int harmonics)
 {
-   vec2 s = voronoi_dev(p.xz/BIOME_SIZE).yx;
-   //float dm = p.y - mountains(p.xz, ha);
-   //float dw = p.y - ALT_MAX * .5;
-   float dm = mountains(p.xz, ha);
-   //dm = ALT_MAX;
-   float dw = ALT_MAX*.5;
-   if (s.x < BIOME_DENSITY[0]) { // mountains
-      return p.y - max(dw, ((dm-dw)*smoothstep(0.00, .2, s.y)+dw));
-
-      //return p.y - dm;
-      //return p.y - ((dm-dw)*smoothstep( .1*BIOME_SIZE, 0., s.y) + dw);
+   vec2 s = voronoi_dev(p.xz/BIOME_SIZE).yx; // id and distance to the borders of the biome
+   float dm = sdMountains(p, harmonics);     // distance to mountains
+   float dw = p.y - 0.;         // distance to water, at altitude 0
+   // Mountains
+   if (s.x < BIOME_DENSITY[0]) {
+      return vec2(min(dw, (dw - dm)*smoothstep(0.3, 0., s.y) + dm), 0); // for transition with other biomes
+      // return dm;
+      // return p.y - ((dm-dw)*smoothstep( .1*BIOME_SIZE, 0., s.y) + dw);
       //return p.y - max(dw, dm*(1.-3.*s.y*s.y/BIOME_SIZE));
       //return p.y - ((dm-dw)*smoothstep(BIOME_SIZE/12., BIOME_SIZE/10., s.y)+dw);
       //return p.y - (dm-dw)*(1.-3.*s.y*s.y/BIOME_SIZE)-dw;
       //return p.y - max((dm-dw)*smoothstep( .4*BIOME_SIZE, 0., s.y) + dw, dw);
       //return p.y - max(mix(mm, ww, s.y*2.), ww);
-   } else if (s.x < BIOME_DENSITY[1]) { // Forest
-      float period = .2;
-      vec2 id = floor(p.xz/period);
-      vec3 dl = vec3(0);
-      dl.xz = .1*(N22(id)-.5);
-      dm = max(dw, .4 + .5*(((dm-dw)*smoothstep(0.00, .2, s.y)+dw)));
-      return min(sdSphere(repOP(transOP(p, vec3(0, dm, 0)+dl), vec3(period, 0, period)), .05), p.y-dm);
+      
    }
-   else { // water
-      return p.y - dw;
+   // Forest
+   else if (s.x < BIOME_DENSITY[1]) {
+      float period = 0.2;           // inverse density of trees
+      vec2 id = floor(p.xz/period); // id of tree
+      vec3 dl = vec3(0); // we move randomly each spatial copy of the tree to avoid regularity
+      dl.xz = .1 * (N22(id) - 0.5);
+      dm = p.y - 0.7 * (p.y - dm); // gentle hills for forests
+      dm = min(dw, ((dw - dm)*smoothstep(0.2, 0., s.y) + dm)); // for transition to other biomes
+      if (voronoi_dev(p.xz/BIOME_SIZE + dl.xz).x < 0.1) { // to ensure a tree do not cross biome border
+         return vec2(dm, 0);
+      }
+      float dt = sdSphere(repOP(transOP(p, vec3(0, p.y - dm, 0) + dl), vec3(period, 0, period)), .05); // distance to the tree of this id
+      if (dt > dm) {
+         return vec2(dm, 0);
+      } else {
+         return vec2(dt, 1);
+      }
+   }
+   // Water
+   else {
+      return vec2(dw, 0);
    }
 }
 
+// Return the normal vector on point <p> of the universe.
 vec3 getNormal(vec3 p, int ha) {
-   float d = getDist(p, ha);
+   float d = getDist(p, ha).x;
    vec2 e = vec2(.01, 0);
-   vec3 n = d - vec3(getDist(p-e.xyy, ha),
-                     getDist(p-e.yxy, ha),
-                     getDist(p-e.yyx, ha));
+   vec3 n = d - vec3(getDist(p-e.xyy, ha).x,
+                     getDist(p-e.yxy, ha).x,
+                     getDist(p-e.yyx, ha).x);
    return normalize(n);
 }
 
-float rayMarching(vec3 ro, vec3 rd) {
-   float dO = 0.;  // dist of item hit
-   int ha;         // number of harmonics in fbm noise
+// Execute the ray marching algorithm and return the distance to the universe from <ro> along the ray <rd> and the id of hit object.
+vec2 rayMarching(vec3 ro, vec3 rd) {
+   float dO = 0.;               // dist of item hit
+   int ha;                      // number of harmonics in fBM noise
+   int obj_id;                  // id of hit object
    for (int i=0; i<MAX_STEPS; i++) {
       vec3 p = ro + rd*dO;
       ha = int(max((1.-HARMONICS)/FAR * length(ro - p) + HARMONICS, 1.)); // harmonics
-      float dS = getDist(p, ha);
+      vec2 res = getDist(p, ha);
+      float dS = res.x;
+      obj_id = int(res.y);
       dO += dS*R_FACTOR;
       if (dS<DIST_CONTACT || dO>FAR) break;
    }
-   return dO;
+   return vec2(dO, obj_id);
 }
 
 float getLight2(vec3 p, int ha) {
@@ -268,7 +289,7 @@ float getLight2(vec3 p, int ha) {
 
    float diff = clamp(dot(n, l), 0., 1.); // dot product can be negative
    //float diff = smoothstep(0., 1., .5*dot(n, l) + .5); // dot product can be negative
-   float d = rayMarching(p + n*DIST_CONTACT*2., l);
+   float d = rayMarching(p + n*DIST_CONTACT*2., l).x;
    if (d < length(lo-p)) diff = .1;                    // cast shadow
 
    //if (length(lo - p) < 1.) return 1.;
@@ -284,7 +305,7 @@ float castShadows(vec3 p, vec3 ro, vec3 n, vec3 ld) {
    for (int i=0; i<MAX_STEPS; i++) {
       vec3 pb = rob + rd*dO;
       int ha = int(max((1.-HARMONICS)/FAR * length(ro - pb) + HARMONICS, 1.)); // harmonics
-      float dS = getDist(pb, ha);
+      float dS = getDist(pb, ha).x;
       dO += dS*R_FACTOR;
       if (dS<DIST_CONTACT || dO>FAR) break;
    }
@@ -353,68 +374,85 @@ vec3 waterMovement(vec2 uv) {
    return clamp(colour + vec3(0.0, 0.35, 0.5), 0.0, 1.0);
 }
 
-vec3 mountain_biome(vec3 p, vec3 n) {
-   // COLORS
-
+vec3 mountain_biome(vec3 p, vec3 n, int obj_id) {
+   // Color definitions
    vec3 pcolor;
    vec3 earth = vec3(183, 135, 75)/100.;
    vec3 grass = vec3(0, 1, 0);
    vec3 snow = vec3(2);
    vec3 water = vec3(14, 135, 204)/100.;
    //vec3 water = waterMovement(p.xz);
-
-   pcolor = earth;                                                                                                     // earth
-   pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
-   pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
-   //if (p.y < ALT_MAX*.51) { // lakes
-   ////pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(n, vec3(0, 1, 0)))));
-   //pcolor = water;
-   ////pcolor = 2. * waterMovement(p.xz);
-   //}
-   return pcolor;
+   // Object choice
+   switch (obj_id) {
+   case 0:                      // ground
+      pcolor = earth;                                                                                                     // earth
+      pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
+      pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
+      //if (p.y < ALT_MAX*.51) { // mountain lakes
+      //pcolor = mix(pcolor, water, smoothstep(.9, 1., abs(dot(n, vec3(0, 1, 0)))));
+      //pcolor = water;
+      //pcolor = 2. * waterMovement(p.xz);
+      //}
+      return pcolor;
+   default:                     // default
+      return vec3(1);
+   }
 }
 
-// broken
-vec3 forest_biome(vec3 p, vec3 n) {
+vec3 forest_biome(vec3 p, vec3 n, int obj_id) {
+   // Color definitions
    vec3 pcolor;
    vec3 earth = vec3(183, 135, 75)/100.;
    vec3 grass = vec3(0,1,0);
-   //    return grass;
+   vec3 leaf = vec3(26, 36, 33)/100.;
    vec3 snow = vec3(2);
-   pcolor = earth;
-   pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
-   pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y)); // swnow
-   return pcolor;
-   return vec3(0, 1, 0);
-   return vec3(12, 238, 149)/100.;
+   switch (obj_id) {
+   case 0:                      // ground
+      pcolor = earth;
+      pcolor = mix(pcolor, grass, smoothstep(0., 1.6, abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*.8, p.y)); // grass
+      pcolor = mix(pcolor, snow, smoothstep(0., 1., abs(dot(n, vec3(0,1,0))) ) * smoothstep(ALT_MAX, ALT_MAX*1.2, p.y));  // swnow
+      return pcolor;
+   case 1:                      // trees
+      return leaf;
+   default:                     // default texture
+      return vec3(1);
+   }
 }
 
-vec3 marshes_biome(vec3 p, vec3 n) {
-   //return waterMovement(p.xz);
-   return vec3(14, 135, 204)/100.;
+vec3 marshes_biome(vec3 p, vec3 n, int obj_id) {
+   switch (obj_id) {
+   case 0:                      // water
+      return vec3(14, 135, 204)/100.;
+      // return waterMovement(p.xz);
+   default:
+      return vec3(1);
+   }
 }
 
-vec3 biomes(vec3 p, vec3 n) {
+vec3 biomes(vec3 p, vec3 n, int obj_id) {
    float s = voronoi_dev(p.xz/BIOME_SIZE).y; // shade of voronoi cell
    if (s<BIOME_DENSITY[0])
-      return mountain_biome(p, n);
+      return mountain_biome(p, n, obj_id);
    else if (s<BIOME_DENSITY[1]) {
-      return forest_biome(p, n);
+      return forest_biome(p, n, obj_id);
    } else
-      return marshes_biome(p, n);
+      return marshes_biome(p, n, obj_id);
 }
 
 vec3 render(vec3 ro, vec3 rd) {
 
-   float dS = rayMarching(ro, rd); // dist to a surface, id of item hit
-   vec3 p = ro + rd*dS;            // hit point
-   int ha = int(max((1.-HARMONICS)/FAR * dS + HARMONICS, 1.)); /// number of fbm harmonics
+   vec2 rm = rayMarching(ro, rd); // dist to a surface, id of item hit
+   float dS = rm.x;
+   int obj_id = int(rm.y);
+   vec3 p = ro + rd*dS;         // hit point
+   int ha = int(max((1.-HARMONICS)/FAR * dS + HARMONICS, 1.)); // number of fbm harmonics
    vec3 n = getNormal(p, ha);
 
    // LIGHTS
 
    vec3 ld = normalize(vec3(1));           // light direction
-   float diff = getLight(p, ro, n, ld);
+   // float diff = getLight(p, ro, n, ld);
+   float diff = .5;
    float cshadows = 1.;
 #ifdef CAST_SHADOWS
    cshadows = castShadows(p, ro, n, ld);
@@ -423,7 +461,7 @@ vec3 render(vec3 ro, vec3 rd) {
 
    // COLORS
 
-   vec3 pcolor = biomes(p, n);
+   vec3 pcolor = biomes(p, n, obj_id);
    vec3 sky = vec3(53, 81, 92)/100. - normalize(rd).y/4.;
 
    //return mix(getNormal(p, ha)*.5+.5, sky, smoothstep(FAR*.5, FAR, dS));

@@ -231,12 +231,12 @@ float noise_func(vec2 uv)
 {
     //return noise(uv);               // good for maps
     //return voronoi(uv);
-    return voronoi_dev(uv).y;
+    return voronoi_dev(uv).x;
     vec2 a, b;
     return float(int(voronoi_ref(uv,a,b).y*10.)/10.);
-    //return voronoi_iso(uv);
-    //return voronoi_flat(uv).y;
-    //return voronoi_flat2(uv);
+    // return voronoi_iso(uv);
+    // return voronoi_flat(uv).y;
+    // return voronoi_flat2(uv);
     //return noised(uv).x;
     //return hash(uv);
     //return hash12(uv);
