@@ -1,37 +1,49 @@
-#include "external/glew-2.1.0/include/GL/glew.h"
+/*#include "external/glew-2.1.0/include/GL/glew.h"*/
 /*#include "external/glfw-3.4/include/GLFW/glfw3.h"*/
 
-/*#include <GL/glew.h>*/
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "shader.h"
-#include "../build/shader_path.h"
+#include <shader.h>
 
-#define VERT_SHADER_PATH "simple_shader.vert"
+static void glfw_error_callback(int error, const char* desc) {
+    fprintf(stderr, "GLFW error %d: %s\n", error, desc);
+}
 
-int main() {
+int main(int argc, char *argv[]) {
+    char frag_shader_path[200];
+    char vert_shader_path[200];
+    if (argc != 3) {
+        printf("Usage: ./shader_display <vertex-shader-path> <fragment-shader-path>\n");
+    } else {
+        strcpy(vert_shader_path, argv[1]);
+        strcpy(frag_shader_path, argv[2]);
+    }
+    
+    glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
         printf("Failed to initialize GLFW\n");
         return -1;
     }
 
     // Set OpenGL version to 3.3 Core Profile
-	glfwWindowHint(GLFW_SAMPLES, 4);
+	/* glfwWindowHint(GLFW_SAMPLES, 4); */
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, FRAG_SHADER_PATH, NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 600, frag_shader_path, NULL, NULL);
     if (!window) {
         printf("Failed to create GLFW window\n");
         glfwTerminate();
         return -1;
     }
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);  // VSYNC ON — DO NOT SKIP
 
     // Initialize GLEW
     glewExperimental = GL_TRUE;
@@ -39,7 +51,10 @@ int main() {
         printf("Failed to initialize GLEW\n");
         return -1;
     }
-
+    
+    // CRITICAL: clear spurious error
+    glGetError();
+    
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
     // Hide the mouse and enable unlimited mouvement
@@ -72,7 +87,7 @@ int main() {
 
 
 	// Create and compile our GLSL program from the shaders
-	GLuint programID = LoadShaders(VERT_SHADER_PATH, FRAG_SHADER_PATH);
+	GLuint programID = LoadShaders(vert_shader_path, frag_shader_path);
 
     // Declare parameters later given to shaders
     GLuint u_resolutionID = glGetUniformLocation(programID, "iResolution");

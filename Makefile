@@ -1,26 +1,32 @@
-SRCS   	 			= utils/pipeline_shader.c utils/shader.c
-SRCS_EXT 			= utils/external/glew-2.1.0/src/glew.c
-OUT  	 			= build/shader_display
-LIBS	 			= -Iutils/external/glew-2.1.0/include -lGL -lglfw #-lGLEW
+CC					= clang
+SRCS   	 			= utils/shader-display/src/*
+INCLUDE				= -Iutils/shader-display/include/
+OUT  	 			= build/shader-display
+LIBS	 			= -lGL -lglfw -lGLEW #-Iutils/external/glew-2.1.0/include
 FLAGS	 			= #-Wall -Wextra -fsanitize=address,undefined
-SHADER_PATH 	   	?= frag_shaders/simple_shader.frag
+FLAGS_DEBUG			= -pg
+FRAG_SHADER_PATH 	?= frag_shaders/test_shader.frag
+VERT_SHADER_PATH    ?= vert_shaders/test_shader.vert
 SHADER_PATH_FILE	= build/shader_path.h
 
 all: compile
 
-compile: $(SRCS)
+compile:
 	mkdir -p build
-	echo "#define FRAG_SHADER_PATH \"$(SHADER_PATH)\"" > $(SHADER_PATH_FILE)
-	gcc $(FLAGS) -o $(OUT) $(SRCS) $(SHADER_PATH_FILE) $(SRCS_EXT) $(LIBS)
+	$(CC) $(FLAGS) -o $(OUT) $(SRCS) $(LIBS) $(INCLUDE)
+
+debug:
+	mkdir -p build
+	$(CC) $(FLAGS_DEBUG) -o $(OUT) $(SRCS) $(LIBS) $(INCLUDE)
 
 run:
-	./build/shader_display
+	# nvidia-offload is to ask for gpu processing
+	nvidia-offload ./build/shader-display $(VERT_SHADER_PATH) $(FRAG_SHADER_PATH)
 
 test:
 	mkdir -p build
-	echo "#define FRAG_SHADER_PATH \"frag_shaders/simple_shader.frag\"" > $(SHADER_PATH_FILE)
-	gcc $(FLAGS) -o $(OUT) $(SRCS) $(SHADER_PATH_FILE) $(SRCS_EXT) $(LIBS)
-	./build/shader_display
+	$(CC) $(FLAGS) -o $(OUT) $(SRCS) $(LIBS) $(INCLUDE)
+	./build/shader-display $(VERT_SHADER_PATH) $(FRAG_SHADER_PATH)
 
 clean:
 	rm -r ./build
